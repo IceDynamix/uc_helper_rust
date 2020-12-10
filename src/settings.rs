@@ -7,9 +7,6 @@ pub struct Settings {
     pub participant_role: u64,
     pub staff_channel: u64,
     pub staff_role: u64,
-    pub public_sheet_id: String,
-    pub staff_sheet_id: String,
-    pub spreadsheet_registration_range: String,
     pub rank_cap: String,
 }
 
