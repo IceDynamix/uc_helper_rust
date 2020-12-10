@@ -2,3 +2,4 @@
 /cred
 /.vscode
 /cache
+.env
