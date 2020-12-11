@@ -1,10 +1,7 @@
 use serenity::{
     async_trait,
     client::{bridge::gateway::ShardManager, Context, EventHandler},
-    framework::{
-        standard::macros::{command, group},
-        StandardFramework,
-    },
+    framework::{standard::macros::group, StandardFramework},
     http::Http,
     model::{event::ResumedEvent, id::GuildId, prelude::*},
     prelude::*,

@@ -1,9 +1,81 @@
+pub mod tenchi;
+
 use std::collections::HashMap;
 
 use reqwest::{Client, Error};
 use serde::Deserialize;
 
 const URL: &str = "https://ch.tetr.io/api";
+
+#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+pub enum Rank {
+    Unranked,
+    D,
+    DPlus,
+    CMinus,
+    C,
+    CPlus,
+    BMinus,
+    B,
+    BPlus,
+    AMinus,
+    A,
+    APlus,
+    SMinus,
+    S,
+    SPlus,
+    SS,
+    U,
+    X,
+}
+
+impl Rank {
+    pub fn from_str(s: &str) -> Rank {
+        match s {
+            "d" => Rank::D,
+            "d+" => Rank::DPlus,
+            "c-" => Rank::CMinus,
+            "c" => Rank::C,
+            "c+" => Rank::CPlus,
+            "b-" => Rank::BMinus,
+            "b" => Rank::B,
+            "b+" => Rank::BPlus,
+            "a-" => Rank::AMinus,
+            "a" => Rank::A,
+            "a+" => Rank::APlus,
+            "s-" => Rank::SMinus,
+            "s" => Rank::S,
+            "s+" => Rank::SPlus,
+            "ss" => Rank::SS,
+            "u" => Rank::U,
+            "x" => Rank::X,
+            _ => Rank::Unranked,
+        }
+    }
+
+    pub fn to_color(&self) -> &str {
+        match self {
+            Rank::Unranked => "828282",
+            Rank::D => "856C84",
+            Rank::DPlus => "815880",
+            Rank::CMinus => "6C417C",
+            Rank::C => "67287B",
+            Rank::CPlus => "522278",
+            Rank::BMinus => "5949BE",
+            Rank::B => "4357B5",
+            Rank::BPlus => "4880B2",
+            Rank::AMinus => "35AA8C",
+            Rank::A => "3EA750",
+            Rank::APlus => "43b536",
+            Rank::SMinus => "B79E2B",
+            Rank::S => "d19e26",
+            Rank::SPlus => "dbaf37",
+            Rank::SS => "e39d3b",
+            Rank::U => "c75c2e",
+            Rank::X => "b852bf",
+        }
+    }
+}
 
 #[derive(Deserialize, Debug)]
 pub struct LeagueData {

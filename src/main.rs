@@ -1,8 +1,13 @@
+#![allow(dead_code)] // temporary until everything has been implemented
+
 use std::error::Error;
 
-mod connections;
 mod discord;
 mod settings;
+mod tetrio;
+
+#[cfg(test)]
+mod tests;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -15,8 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // let username = "icedynamix";
     // println!("all: {:?}", player_history.get_ranks(username).await);
     // println!("highest: {:?}",player_history.get_ranks(username).await.unwrap().iter().max());
+    // discord::bot::start().await?;
 
-    dotenv::dotenv().expect("Failed to load .env file");
-    discord::bot::start().await?;
     Ok(())
 }
