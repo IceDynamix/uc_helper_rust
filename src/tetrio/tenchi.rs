@@ -57,4 +57,17 @@ impl PlayerHistory {
             None
         }
     }
+
+    pub async fn get_highest_rank(&self, username: &str) -> Rank {
+        if let Some(rank_history) = self.ranks.get(&username.to_lowercase()) {
+            return rank_history
+                .rank
+                .iter()
+                .map(|rank| Rank::from_str(rank))
+                .max()
+                .unwrap_or(Rank::Unranked);
+        } else {
+            Rank::Unranked
+        }
+    }
 }
