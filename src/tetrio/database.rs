@@ -142,17 +142,17 @@ pub mod discord {
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct DiscordEntry {
-        discord_id: String,
+        discord_id: u64,
         tetrio_id: String,
         timestamp: String,
     }
 
-    pub async fn link(discord_id: &str, tetrio_id: &str) -> Result<DiscordEntry, DatabaseError> {
+    pub async fn link(discord_id: u64, tetrio_id: &str) -> Result<DiscordEntry, DatabaseError> {
         let now = chrono::offset::Utc::now();
         let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
 
         let entry = DiscordEntry {
-            discord_id: discord_id.to_string(),
+            discord_id,
             tetrio_id: tetrio_id.to_string(),
             timestamp,
         };
