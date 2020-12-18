@@ -97,9 +97,9 @@ pub mod players {
         };
 
         // for our purposes its ok if it fails
-        let player_history = tenchi::PlayerHistory::from_cache().await.ok();
-        let highest_rank = match player_history {
-            Some(history) => history.get_highest_rank(username).await,
+        let highest_ranks = tenchi::HighestRanks::from_cache().ok();
+        let highest_rank = match highest_ranks {
+            Some(history) => history.get(username),
             None => Rank::Unranked,
         }
         .to_str()
