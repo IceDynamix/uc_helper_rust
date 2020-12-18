@@ -25,16 +25,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // tetrio::database::discord::link(&"12345679abcdef", &"icedynamix).await
     // tetrio::database::discord::unlink(&"icedynamix").await
 
-    // Downloads a few gigabytes of data so use with care
-    // tetrio::tenchi::PlayerHistory::refresh().await?;
-    // discord::bot::start().await?;
+    //     tetrio::tenchi::HighestRanks::from_cache()
+    //         .unwrap()
+    //         .get(&"icedynamix");
 
-    println!(
-        "{:?}",
-        tetrio::tenchi::HighestRanks::from_cache()
-            .unwrap()
-            .get(&"icedynamix")
-    );
+    // Downloads a few gigabytes of data so use with care
+    // tetrio::tenchi::HighestRanks::refresh().await?;
+
+    discord::bot::start().await?;
 
     Ok(())
 }

@@ -1,3 +1,5 @@
+use std::{collections::HashSet, env, sync::Arc};
+
 use serenity::{
     async_trait,
     client::{bridge::gateway::ShardManager, Context, EventHandler},
@@ -7,16 +9,13 @@ use serenity::{
     prelude::*,
     Client,
 };
-
-use std::{collections::HashSet, env, error::Error, sync::Arc};
-
 use tracing::{error, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use super::general::*;
 
 #[group]
-#[commands(ping)]
+#[commands(ping, echo)]
 struct General;
 
 struct Handler;
@@ -40,7 +39,7 @@ impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
-pub async fn start() -> Result<(), Box<dyn Error>> {
+pub async fn start() -> serenity::Result<()> {
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         .finish();
