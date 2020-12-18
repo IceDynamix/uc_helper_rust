@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Downloads a few gigabytes of data so use with care
     // tetrio::tenchi::HighestRanks::refresh().await?;
 
-    discord::bot::start().await?;
+    discord::start().await?;
 
     Ok(())
 }

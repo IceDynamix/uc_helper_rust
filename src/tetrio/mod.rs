@@ -1,8 +1,8 @@
-pub mod database;
-pub mod tenchi;
-
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
+pub mod database;
+pub mod tenchi;
 
 const URL: &str = "https://ch.tetr.io/api";
 
@@ -100,19 +100,19 @@ impl Rank {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LeagueData {
-    gamesplayed: i64,
-    gameswon: i64,
-    rating: f64,
-    rank: String,
-    standing: i64,
-    standing_local: i64,
-    percentile: f64,
-    percentile_rank: String,
-    glicko: Option<i64>,
-    rd: Option<i64>,
-    apm: Option<f64>,
-    pps: Option<f64>,
-    vs: Option<f64>,
+    pub gamesplayed: i64,
+    pub gameswon: i64,
+    pub rating: f64,
+    pub rank: String,
+    pub standing: i64,
+    pub standing_local: i64,
+    pub percentile: f64,
+    pub percentile_rank: String,
+    pub glicko: Option<i64>,
+    pub rd: Option<i64>,
+    pub apm: Option<f64>,
+    pub pps: Option<f64>,
+    pub vs: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -124,30 +124,31 @@ pub struct Badge {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
-    _id: String,
-    username: String,
-    role: String,
-    ts: Option<String>,
-    botmaster: Option<String>,
-    badges: Vec<Badge>,
-    xp: f64,
-    gamesplayed: i64,
-    gameswon: i64,
-    gametime: f64,
-    country: Option<String>,
-    badstanding: Option<bool>, // Added late so not every user has it
-    supporter: bool,
-    verified: bool,
-    league: LeagueData,
-    avatar_revision: Option<i64>,
-    banner_revision: Option<i64>,
-    bio: Option<String>,
+    pub _id: String,
+    pub username: String,
+    pub role: String,
+    pub ts: Option<String>,
+    pub botmaster: Option<String>,
+    pub badges: Vec<Badge>,
+    pub xp: f64,
+    pub gamesplayed: i64,
+    pub gameswon: i64,
+    pub gametime: f64,
+    pub country: Option<String>,
+    pub badstanding: Option<bool>,
+    // Added late so not every user has it
+    pub supporter: bool,
+    pub verified: bool,
+    pub league: LeagueData,
+    pub avatar_revision: Option<i64>,
+    pub banner_revision: Option<i64>,
+    pub bio: Option<String>,
 }
 
 impl User {
     pub async fn request(username: &str) -> Option<User> {
         let client = Client::new();
-        let url = format!("{}/users/{}", URL, username);
+        let url = format!("{}/users/{}", URL, username.to_lowercase());
         let request = client
             .request(reqwest::Method::GET, &url)
             .header("X-Session-Header", "IceDynamix");
