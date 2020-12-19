@@ -1,3 +1,4 @@
+use chrono::SecondsFormat;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -127,9 +128,56 @@ async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         lookup(ctx, msg, args.rest()).await
     };
 
-    if let Some(player_entry) = data {
+    if let Some(entry) = data {
         msg.channel_id
-            .say(&ctx.http, format!("{:?}", player_entry))
+            .send_message(&ctx.http, |m| {
+                m.embed(|e| {
+                    e.title(&entry.username);
+                    e.url(format!("https://ch.tetr.io/u/{}", &entry.username));
+
+                    let league = &entry.data.league;
+
+                    e.color(
+                        u64::from_str_radix(
+                            crate::tetrio::Rank::from_str(&league.rank).to_color(),
+                            16,
+                        )
+                        .unwrap_or(0),
+                    );
+
+                    e.thumbnail(format!(
+                        "https://tetrio.team2xh.net/images/ranks/{}.png",
+                        &entry.data.league.rank
+                    ));
+
+                    e.fields(vec![
+                        (
+                            "Tetra Rating",
+                            format!("{:.0} ± {}", &league.rating, &league.rd.unwrap_or_default()),
+                            false,
+                        ),
+                        (
+                            "APM",
+                            format!("{:.2}", &league.apm.unwrap_or_default()),
+                            true,
+                        ),
+                        (
+                            "PPS",
+                            format!("{:.2}", &league.pps.unwrap_or_default()),
+                            true,
+                        ),
+                        ("VS", format!("{:.2}", &league.vs.unwrap_or_default()), true),
+                    ]);
+
+                    e.timestamp(
+                        chrono::DateTime::parse_from_rfc3339(&entry.timestamp)
+                            .expect("Bad timestamp")
+                            .to_rfc3339_opts(SecondsFormat::Secs, false),
+                    );
+
+                    e
+                })
+            })
             .await?;
     }
 

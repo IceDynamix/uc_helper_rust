@@ -58,11 +58,11 @@ pub mod players {
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct PlayerEntry {
-        _id: String,
-        username: String,
-        data: User,
-        highest_rank: String,
-        timestamp: String,
+        pub _id: String,
+        pub username: String,
+        pub data: User,
+        pub highest_rank: String,
+        pub timestamp: String,
     }
 
     pub async fn get_cached(username: &str) -> Result<Option<PlayerEntry>, DatabaseError> {

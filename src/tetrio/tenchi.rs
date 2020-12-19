@@ -1,12 +1,13 @@
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File};
 use std::{error::Error, io::BufReader};
 
-use super::Rank;
 use chrono::TimeZone;
+use serde::{Deserialize, Serialize};
+
+use super::Rank;
 
 const URL: &str = "https://tetrio.team2xh.net/data/player_history.js";
-const CACHE_PATH: &str = "./cache/rank_history.json";
+const CACHE_PATH: &str = "./rank_history.json";
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct HighestRanks {
