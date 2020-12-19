@@ -27,7 +27,7 @@ mod tetrio;
 const BOT_ID: u64 = 776455810683371580;
 
 #[group]
-#[commands(ping, echo)]
+#[commands(ping, echo, stats)]
 struct General;
 
 #[group]

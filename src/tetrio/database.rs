@@ -208,4 +208,21 @@ pub mod discord {
             Err(_) => Err(DatabaseError::CouldNotPush),
         }
     }
+
+    pub async fn get_from_discord_id(discord_id: u64) -> Result<String, DatabaseError> {
+        let collection = establish_db_connection().await?.collection(COLLECTION);
+        match collection
+            .find_one(doc! {"discord_id": discord_id.to_string()}, None)
+            .await
+        {
+            Ok(result) => match result {
+                Some(doc) => match bson::from_document::<DiscordEntry>(doc) {
+                    Ok(entry) => Ok(entry.tetrio_id),
+                    Err(_) => Err(DatabaseError::NotFound),
+                },
+                None => Err(DatabaseError::NotFound),
+            },
+            Err(_) => Err(DatabaseError::CouldNotPush),
+        }
+    }
 }

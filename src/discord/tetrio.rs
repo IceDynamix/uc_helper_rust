@@ -2,6 +2,7 @@ use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
+use crate::tetrio::database::players::PlayerEntry;
 use crate::tetrio::database::DatabaseError;
 use crate::tetrio::database::*;
 
@@ -81,4 +82,76 @@ async fn change_nickname(ctx: &Context, msg: &Message, nickname: &str) -> Comman
             .await?;
     }
     Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[description("Get stats of a particular Tetrio or Discord user")]
+#[max_args(1)]
+async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let data = if args.is_empty() {
+        let id = msg.author.id.0;
+        let author_name = msg
+            .member
+            .clone()
+            .expect("not in guild")
+            .nick
+            .unwrap_or_else(|| msg.author.name.clone());
+
+        let lookup_value = discord::get_from_discord_id(id)
+            .await
+            .unwrap_or(author_name);
+
+        lookup(ctx, msg, &lookup_value).await
+    } else if let Some(mentioned_id) = serenity::utils::parse_mention(args.rest()) {
+        let tetrio_id = discord::get_from_discord_id(mentioned_id).await;
+        match tetrio_id {
+            Ok(lookup_value) => lookup(ctx, msg, &lookup_value).await,
+            Err(DatabaseError::NotFound) => {
+                msg.channel_id
+                    .say(
+                        &ctx.http,
+                        "Discord user isn't linked to a Tetrio user, use `.link <username>`",
+                    )
+                    .await?;
+                None
+            }
+            Err(_) => {
+                msg.channel_id
+                    .say(&ctx.http, "Connection to database failed")
+                    .await?;
+                None
+            }
+        }
+    } else {
+        lookup(ctx, msg, args.rest()).await
+    };
+
+    if let Some(player_entry) = data {
+        msg.channel_id
+            .say(&ctx.http, format!("{:?}", player_entry))
+            .await?;
+    }
+
+    Ok(())
+}
+
+async fn lookup(ctx: &Context, msg: &Message, username: &str) -> Option<PlayerEntry> {
+    match players::get(username).await {
+        Ok(user) => Some(user),
+        Err(DatabaseError::NotFound) => {
+            msg.channel_id
+                .say(&ctx.http, format!("User {} not found", username))
+                .await
+                .ok()?;
+            None
+        }
+        Err(_) => {
+            msg.channel_id
+                .say(&ctx.http, "Connection to database failed")
+                .await
+                .ok()?;
+            None
+        }
+    }
 }
