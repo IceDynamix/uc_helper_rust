@@ -7,6 +7,8 @@ use crate::tetrio::database::*;
 
 #[command]
 #[only_in(guilds)]
+#[description("Links your Discord User to a Tetrio User")]
+#[num_args(1)]
 async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let username = args.rest();
     let result = discord::link(msg.author.id.0, args.rest()).await;
@@ -45,6 +47,7 @@ async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
+#[description("Unlinks your Discord User from a Tetrio User")]
 async fn unlink(ctx: &Context, msg: &Message) -> CommandResult {
     match discord::unlink(msg.author.id.0).await {
         Ok(_) => {

@@ -1,9 +1,15 @@
 use std::{collections::HashSet, env, sync::Arc};
 
+use serenity::framework::standard::{
+    help_commands, Args, CommandGroup, CommandResult, HelpOptions,
+};
 use serenity::{
     async_trait,
     client::{bridge::gateway::ShardManager, Context, EventHandler},
-    framework::{standard::macros::group, StandardFramework},
+    framework::{
+        standard::macros::{group, help},
+        StandardFramework,
+    },
     http::Http,
     model::{event::ResumedEvent, id::GuildId, prelude::*},
     prelude::*,
@@ -17,6 +23,8 @@ use tetrio::*;
 
 mod general;
 mod tetrio;
+
+const BOT_ID: u64 = 776455810683371580;
 
 #[group]
 #[commands(ping, echo)]
@@ -39,6 +47,19 @@ impl EventHandler for Handler {
     async fn resume(&self, _ctx: Context, _: ResumedEvent) {
         info!("Resumed");
     }
+}
+
+#[help]
+async fn help(
+    context: &Context,
+    msg: &Message,
+    args: Args,
+    help_options: &'static HelpOptions,
+    groups: &[&'static CommandGroup],
+    owners: HashSet<UserId>,
+) -> CommandResult {
+    help_commands::with_embeds(context, msg, args, help_options, groups, owners).await;
+    Ok(())
 }
 
 pub struct ShardManagerContainer;
@@ -68,7 +89,14 @@ pub async fn start() -> serenity::Result<()> {
 
     // Create the framework
     let framework = StandardFramework::new()
-        .configure(|c| c.owners(owners).prefix("!"))
+        .configure(|c| {
+            c.prefix(".")
+                .owners(owners)
+                .allow_dm(false)
+                .ignore_bots(true)
+                .on_mention(Some(UserId(BOT_ID)))
+        })
+        .help(&HELP)
         .group(&GENERAL_GROUP)
         .group(&TETRIO_GROUP);
 
