@@ -11,10 +11,16 @@ use crate::database::*;
 #[max_args(1)]
 async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let (response, retry) = register_wrapped(ctx, msg, &args).await;
-    msg.channel_id.say(&ctx.http, response).await?;
+    // TODO Replace with message builder
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
     if retry {
         let (response, _) = register_wrapped(ctx, msg, &args).await;
-        msg.channel_id.say(&ctx.http, response).await?;
+        // TODO Replace with message builder
+        msg.channel_id
+            .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+            .await?;
     }
 
     Ok(())
@@ -31,7 +37,8 @@ async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String,
                 return (format!("🟥 {}", e.to_string()), false);
             }
 
-            if args.is_empty() || tetrio_data.username == args.rest() {
+            if args.is_empty() || tetrio_data.username.to_lowercase() == args.rest().to_lowercase()
+            {
                 match registration::register(msg.author.id.0, &tetrio_data._id).await {
                     Ok(_) => (
                         format!(
@@ -41,16 +48,17 @@ async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String,
                         false,
                     ),
                     Err(DatabaseError::DuplicateEntry) => (
-                        "🟥 Someone else with that tetrio username has already registered!"
-                            .to_string(),
+                        format!(
+                            "🟥 Someone else with the tetrio username {} has already registered!",
+                            tetrio_data.username
+                        ),
                         false,
                     ),
                     Err(e) => (e.to_string(), false),
                 }
             } else {
                 (
-                    "🟥 The linked Tetrio account is different to the provided username, please relink `.link <username>` if necessary!"
-                        .to_string(),
+                    format!("🟥 The linked Tetrio account is different to the provided username {}, please relink `.link <username>` if necessary!", tetrio_data.username),
                     false
                 )
             }
@@ -81,12 +89,15 @@ async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String,
 #[description("Unregisters you from the current tournament")]
 pub async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
     let response = match registration::unregister_discord(msg.author.id.0).await {
-        Ok(_) => "Unlinked Discord user from Tetrio user",
+        Ok(_) => "Unregistered from tournament",
         Err(DatabaseError::NotFound) => "User not registered",
         Err(_) => "Connection to database failed",
     };
 
-    msg.channel_id.say(&ctx.http, response).await?;
+    // TODO Replace with message builder
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
 
     Ok(())
 }
@@ -98,12 +109,15 @@ pub async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
 #[owners_only]
 pub async fn staff_unregister(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let response = match registration::unregister_tetrio(args.rest()).await {
-        Ok(_) => "Unlinked Discord user from Tetrio user",
+        Ok(_) => "Unregistered from tournament",
         Err(DatabaseError::NotFound) => "User not registered",
         Err(_) => "Connection to database failed",
     };
 
-    msg.channel_id.say(&ctx.http, response).await?;
+    // TODO Replace with message builder
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
 
     Ok(())
 }
@@ -128,6 +142,9 @@ pub async fn can_participate(ctx: &Context, msg: &Message, args: Args) -> Comman
             Err(e) => format!("🟥 {}", e.to_string()),
         }
     };
-    msg.channel_id.say(&ctx.http, response).await?;
+    // TODO Replace with message builder
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
     Ok(())
 }

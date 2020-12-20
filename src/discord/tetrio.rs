@@ -13,7 +13,9 @@ use crate::tetrio;
 #[num_args(1)]
 pub async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let (response, _) = link_action(ctx, msg, &args).await?;
-    msg.channel_id.say(&ctx.http, response).await?;
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
     Ok(())
 }
 

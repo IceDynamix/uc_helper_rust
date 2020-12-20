@@ -96,6 +96,15 @@ pub async fn start() -> serenity::Result<()> {
         Err(why) => panic!("Could not access application info: {:?}", why),
     };
 
+    // TODO: Extract into settings
+    let allowed_channels = vec![
+        ChannelId(752703502173863966),
+        ChannelId(776806403884056616),
+        ChannelId(790024599353819187),
+    ]
+    .into_iter()
+    .collect();
+
     // Create the framework
     let framework = StandardFramework::new()
         .configure(|c| {
@@ -103,6 +112,7 @@ pub async fn start() -> serenity::Result<()> {
                 .owners(owners)
                 .allow_dm(false)
                 .ignore_bots(true)
+                .allowed_channels(allowed_channels)
                 .on_mention(Some(UserId(BOT_ID)))
         })
         .help(&HELP)

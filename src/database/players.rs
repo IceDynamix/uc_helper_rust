@@ -98,6 +98,7 @@ impl PlayerEntry {
         let stats = crate::tetrio::announcement_day::from_cache();
         let announcement_stats = stats.get(&self.username);
         let rank_cap = Rank::SS; // TODO replace with settings
+        let rank_cap_plus_one = Rank::U; // TODO replace with settings
 
         if let Some(announcement_stats) = announcement_stats {
             let ann_rank = Rank::from_str(&announcement_stats.rank);
@@ -109,12 +110,12 @@ impl PlayerEntry {
         }
 
         let current_rank = Rank::from_str(&self.data.league.rank);
-        if current_rank > rank_cap {
+        if current_rank > rank_cap_plus_one {
             return Err(RegistrationError::CurrentRankTooHigh(current_rank));
         }
 
         let highest_rank = Rank::from_str(&self.highest_rank);
-        if highest_rank > rank_cap {
+        if highest_rank > rank_cap_plus_one {
             return Err(RegistrationError::HighestRankTooHigh(highest_rank));
         }
 
