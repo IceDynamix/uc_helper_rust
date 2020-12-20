@@ -37,7 +37,7 @@ struct General;
 struct Tetrio;
 
 #[group]
-#[commands(register, unregister)]
+#[commands(register, unregister, can_participate, staff_unregister)]
 struct Registration;
 
 struct Handler;
@@ -56,6 +56,9 @@ impl EventHandler for Handler {
 }
 
 #[help]
+#[lacking_ownership(hide)]
+#[lacking_permissions(hide)]
+#[lacking_role(hide)]
 async fn help(
     context: &Context,
     msg: &Message,
