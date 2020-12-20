@@ -1,7 +1,7 @@
 use chrono::SecondsFormat;
-use mongodb::bson;
 use mongodb::bson::doc;
 use mongodb::options::FindOneAndReplaceOptions;
+use mongodb::{bson, Cursor};
 use serde::{Deserialize, Serialize};
 use serenity::builder::CreateEmbed;
 use tokio::stream::StreamExt;
@@ -9,7 +9,7 @@ use tokio::stream::StreamExt;
 use crate::database::{establish_db_connection, DatabaseError};
 use crate::tetrio::{tenchi, Rank, User};
 
-const COLLECTION: &str = "players";
+pub(crate) const COLLECTION: &str = "players";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerEntry {
@@ -143,7 +143,7 @@ pub async fn get_cached(username: &str) -> Result<Option<PlayerEntry>, DatabaseE
     }
 }
 
-pub async fn get(username: &str) -> Result<PlayerEntry, DatabaseError> {
+pub async fn get_player(username: &str) -> Result<PlayerEntry, DatabaseError> {
     let cached = get_cached(username).await?;
 
     let now = chrono::offset::Utc::now();

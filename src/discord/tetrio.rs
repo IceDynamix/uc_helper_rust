@@ -136,7 +136,7 @@ async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 }
 
 async fn lookup(ctx: &Context, msg: &Message, username: &str) -> Option<PlayerEntry> {
-    match players::get(username).await {
+    match players::get_player(username).await {
         Ok(user) => Some(user),
         Err(DatabaseError::NotFound) => {
             msg.channel_id

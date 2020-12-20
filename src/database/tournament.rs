@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::{establish_db_connection, DatabaseError};
 
-const COLLECTION: &str = "uc6_participants";
+pub(crate) const COLLECTION: &str = "uc6_participants";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegistrationEntry {

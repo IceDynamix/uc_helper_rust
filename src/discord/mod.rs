@@ -19,12 +19,12 @@ use tracing::{error, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use general::*;
-use registration::*;
 use tetrio::*;
+use tournament::*;
 
 mod general;
-mod registration;
 mod tetrio;
+mod tournament;
 
 const BOT_ID: u64 = 776455810683371580;
 
@@ -37,8 +37,8 @@ struct General;
 struct Tetrio;
 
 #[group]
-#[commands(register, unregister, can_participate, staff_unregister)]
-struct Registration;
+#[commands(register, unregister, can_participate, staff_unregister, player_list)]
+struct Tournament;
 
 struct Handler;
 
@@ -118,7 +118,7 @@ pub async fn start() -> serenity::Result<()> {
         .help(&HELP)
         .group(&GENERAL_GROUP)
         .group(&TETRIO_GROUP)
-        .group(&REGISTRATION_GROUP);
+        .group(&TOURNAMENT_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)

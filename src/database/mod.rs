@@ -1,11 +1,14 @@
 use std::env;
 
-use mongodb::{Client, Database};
+use mongodb::bson::doc;
+use mongodb::{bson, Client, Database};
+use serde::de::DeserializeOwned;
 use serenity::static_assertions::_core::fmt::Formatter;
+use tokio::stream::StreamExt;
 
 pub mod discord;
 pub mod players;
-pub mod registration;
+pub mod tournament;
 
 const DATABASE: &str = "uc_helper";
 
@@ -43,6 +46,18 @@ async fn establish_db_connection() -> Result<Database, DatabaseError> {
     let url = env::var("DATABASE_URL").expect("url must be set");
     match Client::with_uri_str(&url).await {
         Ok(client) => Ok(client.database(DATABASE)),
+        Err(_) => Err(DatabaseError::ConnectionFailed),
+    }
+}
+
+pub async fn get_all<T: DeserializeOwned>(collection: &str) -> Result<Vec<T>, DatabaseError> {
+    let collection = establish_db_connection().await?.collection(&collection);
+    let cursor = collection.find(doc! {}, None).await;
+    match cursor {
+        Ok(results) => Ok(results
+            .map(|entry| bson::from_document(entry.expect("bad entry")).expect("bad entry"))
+            .collect()
+            .await),
         Err(_) => Err(DatabaseError::ConnectionFailed),
     }
 }

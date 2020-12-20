@@ -71,7 +71,7 @@ pub async fn get_from_discord_id(discord_id: u64) -> Result<DiscordEntry, Databa
 }
 
 pub async fn get_from_tetrio(tetrio: &str) -> Result<DiscordEntry, DatabaseError> {
-    let result = crate::database::players::get(tetrio).await?;
+    let result = crate::database::players::get_player(tetrio).await?;
     let id = result._id;
     get(doc! {"tetrio_id": id}).await
 }

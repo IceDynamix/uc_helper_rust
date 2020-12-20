@@ -2,6 +2,8 @@ use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
+use crate::database::players::PlayerEntry;
+use crate::database::tournament::RegistrationEntry;
 use crate::database::DatabaseError;
 use crate::database::*;
 
@@ -29,7 +31,7 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String, bool) {
     match discord::get_from_discord_id(msg.author.id.0).await {
         Ok(entry) => {
-            let tetrio_data = players::get(&entry.tetrio_id)
+            let tetrio_data = players::get_player(&entry.tetrio_id)
                 .await
                 .expect("Data of linked account could not be found?");
 
@@ -39,7 +41,7 @@ async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String,
 
             if args.is_empty() || tetrio_data.username.to_lowercase() == args.rest().to_lowercase()
             {
-                match registration::register(msg.author.id.0, &tetrio_data._id).await {
+                match tournament::register(msg.author.id.0, &tetrio_data._id).await {
                     Ok(_) => (
                         format!(
                             "🟩 Successfully registered {} for the tournament",
@@ -88,7 +90,7 @@ async fn register_wrapped(ctx: &Context, msg: &Message, args: &Args) -> (String,
 #[only_in(guilds)]
 #[description("Unregisters you from the current tournament")]
 pub async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
-    let response = match registration::unregister_discord(msg.author.id.0).await {
+    let response = match tournament::unregister_discord(msg.author.id.0).await {
         Ok(_) => "Unregistered from tournament",
         Err(DatabaseError::NotFound) => "User not registered",
         Err(_) => "Connection to database failed",
@@ -108,7 +110,7 @@ pub async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
 #[num_args(1)]
 #[owners_only]
 pub async fn staff_unregister(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let response = match registration::unregister_tetrio(args.rest()).await {
+    let response = match tournament::unregister_tetrio(args.rest()).await {
         Ok(_) => "Unregistered from tournament",
         Err(DatabaseError::NotFound) => "User not registered",
         Err(_) => "Connection to database failed",
@@ -129,7 +131,7 @@ pub async fn can_participate(ctx: &Context, msg: &Message, args: Args) -> Comman
     let response = if args.is_empty() {
         format!("🟥 {}", "Please provide a username!")
     } else {
-        let tetrio_data = players::get(args.rest()).await;
+        let tetrio_data = players::get_player(args.rest()).await;
         match tetrio_data {
             Ok(data) => {
                 if let Err(e) = data.can_participate() {
@@ -146,5 +148,42 @@ pub async fn can_participate(ctx: &Context, msg: &Message, args: Args) -> Comman
     msg.channel_id
         .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
         .await?;
+    Ok(())
+}
+
+#[command]
+#[only_in(guilds)]
+#[description("Shows all players currently registered in the tournament")]
+#[aliases("playerlist", "list")]
+async fn player_list(ctx: &Context, msg: &Message) -> CommandResult {
+    let player_entries = get_all::<PlayerEntry>(players::COLLECTION).await?;
+    let reg_entries = get_all::<RegistrationEntry>(tournament::COLLECTION).await?;
+
+    // TODO: replace with sorted list
+    let usernames: Vec<String> = reg_entries
+        .iter()
+        .map(|reg_entry| {
+            player_entries
+                .iter()
+                .filter(|player_entry| player_entry._id == reg_entry.tetrio_id)
+                .collect::<Vec<&PlayerEntry>>()
+                .first()
+                .expect("Could not find username?")
+                .username
+                .clone()
+        })
+        .collect();
+
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.title("Player List");
+                e.description(usernames.join("\n"));
+                e
+            });
+            m
+        })
+        .await?;
+
     Ok(())
 }
