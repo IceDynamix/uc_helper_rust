@@ -19,20 +19,26 @@ use tracing::{error, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use general::*;
+use registration::*;
 use tetrio::*;
 
 mod general;
+mod registration;
 mod tetrio;
 
 const BOT_ID: u64 = 776455810683371580;
 
 #[group]
-#[commands(ping, echo, stats)]
+#[commands(ping, echo)]
 struct General;
 
 #[group]
-#[commands(link, unlink)]
+#[commands(link, unlink, stats)]
 struct Tetrio;
+
+#[group]
+#[commands(register, unregister)]
+struct Registration;
 
 struct Handler;
 
@@ -98,7 +104,8 @@ pub async fn start() -> serenity::Result<()> {
         })
         .help(&HELP)
         .group(&GENERAL_GROUP)
-        .group(&TETRIO_GROUP);
+        .group(&TETRIO_GROUP)
+        .group(&REGISTRATION_GROUP);
 
     let mut client = Client::builder(&token)
         .framework(framework)

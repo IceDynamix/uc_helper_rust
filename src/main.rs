@@ -6,6 +6,7 @@ mod discord;
 mod settings;
 mod tetrio;
 
+pub mod database;
 #[cfg(test)]
 mod tests;
 

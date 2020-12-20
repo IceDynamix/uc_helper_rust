@@ -1,50 +1,48 @@
-use chrono::SecondsFormat;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
-use crate::tetrio::database::players::PlayerEntry;
-use crate::tetrio::database::DatabaseError;
-use crate::tetrio::database::*;
+use crate::database::players::PlayerEntry;
+use crate::database::DatabaseError;
+use crate::database::*;
+use crate::tetrio;
 
 #[command]
 #[only_in(guilds)]
 #[description("Links your Discord User to a Tetrio User")]
 #[num_args(1)]
-async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+pub async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let (response, _) = link_action(ctx, msg, &args).await?;
+    msg.channel_id.say(&ctx.http, response).await?;
+    Ok(())
+}
+
+// returning a tuple is not good but im under time pressure
+// TODO find something better
+pub async fn link_action(
+    ctx: &Context,
+    msg: &Message,
+    args: &Args,
+) -> CommandResult<(String, Option<tetrio::User>)> {
     let username = args.rest();
     let result = discord::link(msg.author.id.0, args.rest()).await;
-    match result {
+    let response = match result {
         Ok(user) => {
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!("Linked Discord user with Tetrio user {}", user.username),
-                )
-                .await?;
-
-            change_nickname(ctx, msg, &user.username).await?;
+            change_nickname(ctx, msg, args.rest()).await?;
+            (
+                format!("Linked Discord user with Tetrio user {}", user.username),
+                Some(user),
+            )
         }
-        Err(DatabaseError::NotFound) => {
-            msg.channel_id
-                .say(&ctx.http, format!("User {} not found", username))
-                .await?;
-        }
-        Err(DatabaseError::DuplicateEntry) => {
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    "Another Discord user has already linked this Tetrio user",
-                )
-                .await?;
-        }
-        Err(_) => {
-            msg.channel_id
-                .say(&ctx.http, "Connection to database failed")
-                .await?;
-        }
+        Err(DatabaseError::NotFound) => (format!("User {} not found", username), None),
+        Err(DatabaseError::DuplicateEntry) => (
+            "Another Discord user has already linked this Tetrio user".to_string(),
+            None,
+        ),
+        Err(_) => ("Connection to database failed".to_string(), None),
     };
-    Ok(())
+
+    Ok(response)
 }
 
 #[command]
@@ -76,10 +74,7 @@ async fn change_nickname(ctx: &Context, msg: &Message, nickname: &str) -> Comman
     let member = msg.member(&ctx.http).await.expect("Not in guild");
     if let Err(e) = member.edit(&ctx.http, |m| m.nickname(nickname)).await {
         msg.channel_id
-            .say(
-                &ctx.http,
-                format!("Could not change nickname, reason: {}", e),
-            )
+            .say(&ctx.http, format!("Could not change nickname ({})", e))
             .await?;
     }
     Ok(())
@@ -99,15 +94,16 @@ async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             .nick
             .unwrap_or_else(|| msg.author.name.clone());
 
-        let lookup_value = discord::get_from_discord_id(id)
-            .await
-            .unwrap_or(author_name);
+        let lookup_value = match discord::get_from_discord_id(id).await {
+            Ok(entry) => entry.tetrio_id,
+            Err(_) => author_name,
+        };
 
         lookup(ctx, msg, &lookup_value).await
     } else if let Some(mentioned_id) = serenity::utils::parse_mention(args.rest()) {
-        let tetrio_id = discord::get_from_discord_id(mentioned_id).await;
-        match tetrio_id {
-            Ok(lookup_value) => lookup(ctx, msg, &lookup_value).await,
+        let result = discord::get_from_discord_id(mentioned_id).await;
+        match result {
+            Ok(entry) => lookup(ctx, msg, &entry.tetrio_id).await,
             Err(DatabaseError::NotFound) => {
                 msg.channel_id
                     .say(
@@ -130,54 +126,7 @@ async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     if let Some(entry) = data {
         msg.channel_id
-            .send_message(&ctx.http, |m| {
-                m.embed(|e| {
-                    e.title(&entry.username);
-                    e.url(format!("https://ch.tetr.io/u/{}", &entry.username));
-
-                    let league = &entry.data.league;
-
-                    e.color(
-                        u64::from_str_radix(
-                            crate::tetrio::Rank::from_str(&league.rank).to_color(),
-                            16,
-                        )
-                        .unwrap_or(0),
-                    );
-
-                    e.thumbnail(format!(
-                        "https://tetrio.team2xh.net/images/ranks/{}.png",
-                        &entry.data.league.rank
-                    ));
-
-                    e.fields(vec![
-                        (
-                            "Tetra Rating",
-                            format!("{:.0} ± {}", &league.rating, &league.rd.unwrap_or_default()),
-                            false,
-                        ),
-                        (
-                            "APM",
-                            format!("{:.2}", &league.apm.unwrap_or_default()),
-                            true,
-                        ),
-                        (
-                            "PPS",
-                            format!("{:.2}", &league.pps.unwrap_or_default()),
-                            true,
-                        ),
-                        ("VS", format!("{:.2}", &league.vs.unwrap_or_default()), true),
-                    ]);
-
-                    e.timestamp(
-                        chrono::DateTime::parse_from_rfc3339(&entry.timestamp)
-                            .expect("Bad timestamp")
-                            .to_rfc3339_opts(SecondsFormat::Secs, false),
-                    );
-
-                    e
-                })
-            })
+            .send_message(&ctx.http, |m| m.set_embed(entry.generate_embed()))
             .await?;
     }
 

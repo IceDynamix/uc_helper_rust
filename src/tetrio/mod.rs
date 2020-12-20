@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-pub mod database;
+pub mod announcement_day;
 pub mod tenchi;
 
 const URL: &str = "https://ch.tetr.io/api";
