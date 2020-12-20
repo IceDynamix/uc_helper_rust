@@ -1,7 +1,7 @@
 use chrono::SecondsFormat;
+use mongodb::bson;
 use mongodb::bson::doc;
 use mongodb::options::FindOneAndReplaceOptions;
-use mongodb::{bson, Cursor};
 use serde::{Deserialize, Serialize};
 use serenity::builder::CreateEmbed;
 use tokio::stream::StreamExt;

@@ -6,6 +6,7 @@ use crate::database::players::PlayerEntry;
 use crate::database::tournament::RegistrationEntry;
 use crate::database::DatabaseError;
 use crate::database::*;
+use crate::tetrio::Rank;
 
 #[command]
 #[only_in(guilds)]
@@ -157,28 +158,45 @@ pub async fn can_participate(ctx: &Context, msg: &Message, args: Args) -> Comman
 #[aliases("playerlist", "list")]
 async fn player_list(ctx: &Context, msg: &Message) -> CommandResult {
     let player_entries = get_all::<PlayerEntry>(players::COLLECTION).await?;
-    let reg_entries = get_all::<RegistrationEntry>(tournament::COLLECTION).await?;
+    let registration_entries = get_all::<RegistrationEntry>(tournament::COLLECTION).await?;
+    let participant_ids: Vec<String> = registration_entries
+        .iter()
+        .map(|e| e.tetrio_id.clone())
+        .collect();
 
     // TODO: replace with sorted list
-    let usernames: Vec<String> = reg_entries
+    let participants: Vec<&PlayerEntry> = player_entries
         .iter()
-        .map(|reg_entry| {
-            player_entries
-                .iter()
-                .filter(|player_entry| player_entry._id == reg_entry.tetrio_id)
-                .collect::<Vec<&PlayerEntry>>()
-                .first()
-                .expect("Could not find username?")
-                .username
-                .clone()
-        })
+        .filter(|player| participant_ids.contains(&player._id))
         .collect();
 
     msg.channel_id
         .send_message(&ctx.http, |m| {
             m.embed(|e| {
                 e.title("Player List");
-                e.description(usernames.join("\n"));
+                e.description(format!("{} participants", registration_entries.len()));
+
+                for rank in Rank::iter().rev() {
+                    let mut valid: Vec<&&PlayerEntry> = participants
+                        .iter()
+                        .filter(|p| &Rank::from_str(&p.data.league.rank) == rank)
+                        .collect();
+                    if valid.is_empty() {
+                        continue;
+                    }
+                    let content = if !valid.is_empty() {
+                        valid.sort_by_key(|p| Rank::from_str(&p.data.league.rank));
+                        valid
+                            .iter()
+                            .map(|p| p.username.to_owned())
+                            .collect::<Vec<String>>()
+                            .join(", ")
+                    } else {
+                        "-".to_string()
+                    };
+                    let title = format!("{} {}", rank.to_emoji(), valid.len());
+                    e.field(title, content, true);
+                }
                 e
             });
             m

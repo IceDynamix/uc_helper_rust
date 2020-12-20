@@ -51,7 +51,7 @@ impl Rank {
             _ => Rank::Unranked,
         }
     }
-    pub fn to_str(&self) -> &str {
+    pub fn to_str(&self) -> &'static str {
         match self {
             Rank::D => "d",
             Rank::DPlus => "d+",
@@ -74,7 +74,7 @@ impl Rank {
         }
     }
 
-    pub fn to_color(&self) -> &str {
+    pub fn to_color(&self) -> &'static str {
         match self {
             Rank::Unranked => "828282",
             Rank::D => "856C84",
@@ -95,6 +95,38 @@ impl Rank {
             Rank::U => "c75c2e",
             Rank::X => "b852bf",
         }
+    }
+
+    pub fn to_emoji(&self) -> &'static str {
+        match self {
+            Rank::X => "<:rank_x:758747882215047169>",
+            Rank::U => "<:rank_u:758747882127097887>",
+            Rank::SS => "<:rank_ss:758747882425024572>",
+            Rank::SPlus => "<:rank_splus:758747881951461417>",
+            Rank::S => "<:rank_s:758747881728507986>",
+            Rank::SMinus => "<:rank_sminus:758747881820651561>",
+            Rank::APlus => "<:rank_aplus:758747881820913684>",
+            Rank::A => "<:rank_a:758747881682763797>",
+            Rank::AMinus => "<:rank_aminus:758747881657204775>",
+            Rank::BPlus => "<:rank_bplus:758747881854337034>",
+            Rank::B => "<:rank_b:758747881779232778>",
+            Rank::BMinus => "<:rank_bminus:758747881833365505>",
+            Rank::CPlus => "<:rank_cplus:758747881833889802>",
+            Rank::C => "<:rank_c:758747881808068622>",
+            Rank::CMinus => "<:rank_cminus:758747881791422464>",
+            Rank::DPlus => "<:rank_dplus:758747881603072061>",
+            Rank::D => "<:rank_d:758747881896149052>",
+            _ => "<:rank_unranked:790331415836622868>",
+        }
+    }
+
+    pub fn iter() -> std::slice::Iter<'static, Rank> {
+        use Rank::*;
+        static RANKS: [Rank; 18] = [
+            Unranked, D, DPlus, CMinus, C, CPlus, BMinus, B, BPlus, AMinus, A, APlus, SMinus, S,
+            SPlus, SS, U, X,
+        ];
+        RANKS.iter()
     }
 }
 
