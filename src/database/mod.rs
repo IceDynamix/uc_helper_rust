@@ -1,10 +1,11 @@
 use std::env;
 
 use mongodb::bson::doc;
-use mongodb::{bson, Client, Database};
+use mongodb::{bson, Client, Collection, Database};
 use serde::de::DeserializeOwned;
 use serenity::static_assertions::_core::fmt::Formatter;
 use tokio::stream::StreamExt;
+use tracing::info;
 
 pub mod discord;
 pub mod players;
@@ -42,16 +43,17 @@ impl std::error::Error for DatabaseError {
     }
 }
 
-async fn establish_db_connection() -> Result<Database, DatabaseError> {
+async fn establish_db_connection(collection: &str) -> Result<Collection, DatabaseError> {
     let url = env::var("DATABASE_URL").expect("url must be set");
+    info!("Connection to collection {}", collection);
     match Client::with_uri_str(&url).await {
-        Ok(client) => Ok(client.database(DATABASE)),
+        Ok(client) => Ok(client.database(DATABASE).collection(collection)),
         Err(_) => Err(DatabaseError::ConnectionFailed),
     }
 }
 
 pub async fn get_all<T: DeserializeOwned>(collection: &str) -> Result<Vec<T>, DatabaseError> {
-    let collection = establish_db_connection().await?.collection(&collection);
+    let collection = establish_db_connection(collection).await?;
     let cursor = collection.find(doc! {}, None).await;
     match cursor {
         Ok(results) => Ok(results

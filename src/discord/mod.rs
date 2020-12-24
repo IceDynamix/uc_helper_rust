@@ -7,7 +7,7 @@ use serenity::{
     async_trait,
     client::{bridge::gateway::ShardManager, Context, EventHandler},
     framework::{
-        standard::macros::{group, help},
+        standard::macros::{group, help, hook},
         StandardFramework,
     },
     http::Http,
@@ -15,7 +15,7 @@ use serenity::{
     prelude::*,
     Client,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use general::*;
@@ -33,7 +33,7 @@ const BOT_ID: u64 = 776455810683371580;
 struct General;
 
 #[group]
-#[commands(link, unlink, stats)]
+#[commands(link, unlink, stats, who_is)]
 struct Tetrio;
 
 #[group]
@@ -52,6 +52,23 @@ impl EventHandler for Handler {
 
     async fn resume(&self, _ctx: Context, _: ResumedEvent) {
         info!("Resumed");
+    }
+}
+
+#[hook]
+async fn before(_ctx: &Context, msg: &Message, command_name: &str) -> bool {
+    info!(
+        "Got command '{}' by user '{}'",
+        command_name, msg.author.name
+    );
+    true // if `before` returns false, command processing doesn't happen.
+}
+
+#[hook]
+async fn after(_ctx: &Context, _msg: &Message, command_name: &str, command_result: CommandResult) {
+    match command_result {
+        Ok(()) => info!("Processed command '{}'", command_name),
+        Err(why) => warn!("Command '{}' returned error {:?}", command_name, why),
     }
 }
 
@@ -80,6 +97,7 @@ impl TypeMapKey for ShardManagerContainer {
 pub async fn start() -> serenity::Result<()> {
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
+        .compact()
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Failed to start the logger");
 
@@ -115,6 +133,8 @@ pub async fn start() -> serenity::Result<()> {
                 .allowed_channels(allowed_channels)
                 .on_mention(Some(UserId(BOT_ID)))
         })
+        .before(before)
+        .after(after)
         .help(&HELP)
         .group(&GENERAL_GROUP)
         .group(&TETRIO_GROUP)

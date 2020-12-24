@@ -115,7 +115,7 @@ impl PlayerEntry {
         }
 
         let highest_rank = Rank::from_str(&self.highest_rank);
-        if highest_rank > rank_cap_plus_one {
+        if highest_rank > rank_cap {
             return Err(RegistrationError::HighestRankTooHigh(highest_rank));
         }
 
@@ -124,7 +124,7 @@ impl PlayerEntry {
 }
 
 pub async fn get_cached(username: &str) -> Result<Option<PlayerEntry>, DatabaseError> {
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
 
     let mut results = collection
         .find(
@@ -181,7 +181,7 @@ pub async fn get_player(username: &str) -> Result<PlayerEntry, DatabaseError> {
     };
     let bson_entry = bson::to_document(&entry).unwrap();
 
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     let options = FindOneAndReplaceOptions::builder().upsert(true).build();
     match collection
         .find_one_and_replace(doc! {"_id": _id.clone()}, bson_entry, options)

@@ -25,7 +25,7 @@ pub async fn link(discord_id: u64, username: &str) -> Result<tetrio::User, Datab
         Some(user) => user,
     };
 
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     let existing_users_with_id = collection
         .find_one(doc! {"tetrio_id": tetrio_user._id.clone()}, None)
         .await;
@@ -53,7 +53,7 @@ pub async fn link(discord_id: u64, username: &str) -> Result<tetrio::User, Datab
 }
 
 pub async fn unlink(discord_id: u64) -> Result<(), DatabaseError> {
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     match collection
         .find_one_and_delete(doc! {"discord_id": discord_id.to_string()}, None)
         .await
@@ -77,7 +77,7 @@ pub async fn get_from_tetrio(tetrio: &str) -> Result<DiscordEntry, DatabaseError
 }
 
 async fn get(filter: bson::Document) -> Result<DiscordEntry, DatabaseError> {
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     match collection.find_one(filter, None).await {
         Ok(result) => match result {
             Some(doc) => match bson::from_document::<DiscordEntry>(doc) {

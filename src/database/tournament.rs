@@ -18,7 +18,7 @@ pub async fn register(discord_id: u64, tetrio_id: &str) -> Result<(), DatabaseEr
     let now = chrono::offset::Utc::now();
     let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
 
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     let existing_users_with_id = collection
         .find_one(
             doc! {"$or": [{"discord_id": discord_id},{"tetrio_id": tetrio_id}]},
@@ -58,7 +58,7 @@ pub async fn unregister_tetrio(tetrio_id: &str) -> Result<(), DatabaseError> {
 
 // TODO: yeet overrankers
 async fn unregister(filter: bson::Document) -> Result<(), DatabaseError> {
-    let collection = establish_db_connection().await?.collection(COLLECTION);
+    let collection = establish_db_connection(COLLECTION).await?;
     match collection.find_one_and_delete(filter, None).await {
         Ok(result) => match result {
             Some(_) => Ok(()),
