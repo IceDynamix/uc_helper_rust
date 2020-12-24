@@ -154,3 +154,23 @@ async fn lookup(ctx: &Context, msg: &Message, username: &str) -> Option<PlayerEn
         }
     }
 }
+
+#[command]
+#[only_in(guilds)]
+#[aliases("whois")]
+#[description("Finds the Discord user is linked to a Tetrio user")]
+#[usage(".whois <username>")]
+#[num_args(1)]
+async fn who_is(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let response = match discord::get_from_tetrio(args.rest()).await {
+        Ok(entry) => format!("`{}` is <@{}>!", args.rest(), entry.discord_id),
+        Err(DatabaseError::NotFound) => format!("`{}` is not linked!", args.rest()),
+        Err(e) => e.to_string(),
+    };
+
+    msg.channel_id
+        .say(&ctx.http, format!("<@{}> {}", msg.author.id.0, response))
+        .await?;
+
+    Ok(())
+}
