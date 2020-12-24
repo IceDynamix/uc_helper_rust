@@ -107,7 +107,7 @@ pub async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
 
 #[command]
 #[only_in(guilds)]
-#[description("Unregisters you from the current tournament")]
+#[description("Unregisters a specific player from the current tournament (tetrio ID)")]
 #[num_args(1)]
 #[owners_only]
 pub async fn staff_unregister(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
@@ -184,18 +184,27 @@ async fn player_list(ctx: &Context, msg: &Message) -> CommandResult {
                     if valid.is_empty() {
                         continue;
                     }
-                    let content = if !valid.is_empty() {
+
+                    if !valid.is_empty() {
                         valid.sort_by_key(|p| Rank::from_str(&p.data.league.rank));
-                        valid
-                            .iter()
-                            .map(|p| p.username.to_owned())
-                            .collect::<Vec<String>>()
-                            .join(", ")
+                        let chunks_needed = valid.len() / 50 + 1;
+                        let chunk_size = valid.len() / chunks_needed;
+                        let first_chunk = true;
+                        for username_chunk in valid.chunks(chunk_size) {
+                            let elements: Vec<String> = username_chunk
+                                .iter()
+                                .map(|p| p.username.to_owned())
+                                .collect();
+                            let title = if first_chunk {
+                                format!("{} {}", rank.to_emoji(), valid.len())
+                            } else {
+                                rank.to_emoji().to_string()
+                            };
+                            e.field(title, elements.join(","), true);
+                        }
                     } else {
-                        "-".to_string()
-                    };
-                    let title = format!("{} {}", rank.to_emoji(), valid.len());
-                    e.field(title, content, true);
+                        e.field(&rank.to_emoji(), "-".to_string(), true);
+                    }
                 }
                 e
             });
