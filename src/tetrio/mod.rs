@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod leaderboard;
+pub mod user;
 
 const API_URL: &str = "https://ch.tetr.io/api";
 
