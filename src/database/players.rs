@@ -1,4 +1,4 @@
-use chrono::SecondsFormat;
+use chrono::{DateTime, Duration, NaiveDateTime, SecondsFormat, Utc};
 use mongodb::{
     bson,
     bson::{doc, Document},
@@ -13,6 +13,15 @@ use crate::tetrio::leaderboard::LeaderboardUser;
 use crate::tetrio::CacheData;
 
 const COLLECTION_NAME: &str = "players";
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PlayerEntry {
+    tetrio_id: String,
+    discord_id: Option<String>,
+    link_timestamp: String,
+    tetrio_data: Option<LeaderboardUser>,
+    cache_data: Option<CacheData>,
+}
 
 pub struct PlayerCollection {
     collection: Collection,
@@ -87,6 +96,7 @@ impl PlayerCollection {
         }
     }
 
+    // We don't care about cache timeouts here since whats grabbed is already grabbed, might as well put it in, right?
     pub async fn update_all_with_lb(&self) -> DatabaseResult<()> {
         println!("Started updating via leaderboard");
 
@@ -118,13 +128,27 @@ impl PlayerCollection {
 
         Ok(())
     }
-}
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PlayerEntry {
-    tetrio_id: String,
-    discord_id: Option<String>,
-    link_timestamp: String,
-    tetrio_data: Option<LeaderboardUser>,
-    cache_data: Option<CacheData>,
+    // Returns true if not cached or cached for longer than 10 minutes
+    // We can't simply use cache.cached_until, since leaderboard data is cached for 1h, while regular user data is cached for 1min
+    pub async fn is_cached(&self, filter: impl Into<Option<Document>>) -> bool {
+        let cache_timeout = Duration::minutes(10);
+
+        if let Some(entry) = self.collection.find_one(filter, None).await.unwrap() {
+            let data: PlayerEntry = bson::from_document(entry).expect("bad entry");
+            if data.tetrio_data.is_some() {
+                if let Some(cache_data) = data.cache_data {
+                    let naive_dt = NaiveDateTime::from_timestamp(cache_data.cached_at / 1000, 0);
+                    let last_cached: DateTime<Utc> = DateTime::from_utc(naive_dt, Utc);
+                    let now = Utc::now();
+
+                    if now <= last_cached.checked_add_signed(cache_timeout).unwrap_or(now) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
 }

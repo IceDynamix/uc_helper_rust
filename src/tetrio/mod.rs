@@ -41,9 +41,9 @@ struct TetrioResponseStruct {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct CacheData {
-    status: String,
-    cached_at: i64,
-    cached_until: i64,
+    pub status: String,
+    pub cached_at: i64,
+    pub cached_until: i64,
 }
 
 #[derive(Debug)]
