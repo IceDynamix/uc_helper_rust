@@ -19,18 +19,18 @@ pub struct LeagueData {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct LeaderboardUser {
-    _id: String,
-    username: String,
-    role: String,
-    country: Option<String>,
-    supporter: Option<bool>,
-    verified: bool,
-    league: LeagueData,
+    pub _id: String,
+    pub username: String,
+    pub role: String,
+    pub country: Option<String>,
+    pub supporter: Option<bool>,
+    pub verified: bool,
+    pub league: LeagueData,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct LeaderboardData {
-    users: Vec<LeaderboardUser>,
+    pub users: Vec<LeaderboardUser>,
 }
 
 pub async fn request() -> TetrioResponse<LeaderboardData> {

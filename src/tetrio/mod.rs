@@ -47,8 +47,8 @@ pub struct CacheData {
 
 #[derive(Debug)]
 pub struct SuccessfulResponse<T> {
-    data: T,
-    cache: CacheData,
+    pub data: T,
+    pub cache: CacheData,
 }
 
 type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
