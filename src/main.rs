@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //     .add_player("3".to_string(), Some("3".to_string()))
     //     .await?;
 
-    println!("{:?}", tetrio::request("general/stats".to_string()).await);
+    println!("{:?}", tetrio::leaderboard::request().await);
 
     Ok(())
 }
