@@ -12,12 +12,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
 
     let db = database::LocalDatabase::connect().await?;
-    println!(
-        "{}",
-        db.players
-            .is_cached(doc! {"tetrio_id": "5f6756d9484fe92b48f7007c"})
-            .await
-    );
+    let icedynamix = db.players.get_player("icedynamix").await?.unwrap();
+
+    db.players.update_player("icedynamix").await?;
+    println!("{}", icedynamix.is_cached());
 
     Ok(())
 }

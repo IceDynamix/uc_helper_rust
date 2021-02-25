@@ -9,8 +9,9 @@ use serenity::futures::StreamExt;
 use tracing::info;
 
 use crate::database::{DatabaseError, DatabaseResult};
+use crate::tetrio;
 use crate::tetrio::leaderboard::LeaderboardUser;
-use crate::tetrio::CacheData;
+use crate::tetrio::{CacheData, TetrioApiError};
 
 const COLLECTION_NAME: &str = "players";
 
@@ -21,6 +22,31 @@ pub struct PlayerEntry {
     link_timestamp: String,
     tetrio_data: Option<LeaderboardUser>,
     cache_data: Option<CacheData>,
+}
+
+impl PlayerEntry {
+    pub fn from_document(doc: Document) -> PlayerEntry {
+        bson::from_document(doc).expect("bad entry")
+    }
+
+    // Returns true if not cached or cached for longer than 10 minutes
+    // We can't simply use cache.cached_until, since leaderboard data is cached for 1h, while regular user data is cached for 1min
+    pub fn is_cached(&self) -> bool {
+        let cache_timeout = Duration::minutes(10);
+
+        if self.tetrio_data.is_some() {
+            if let Some(cache_data) = &self.cache_data {
+                let naive_dt = NaiveDateTime::from_timestamp(cache_data.cached_at / 1000, 0);
+                let last_cached: DateTime<Utc> = DateTime::from_utc(naive_dt, Utc);
+                let now = Utc::now();
+
+                if now <= last_cached.checked_add_signed(cache_timeout).unwrap_or(now) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 pub struct PlayerCollection {
@@ -81,9 +107,23 @@ impl PlayerCollection {
     ) -> DatabaseResult<Vec<PlayerEntry>> {
         match self.collection.find(filter, None).await {
             Ok(result) => Ok(result
-                .map(|entry| bson::from_document(entry.expect("bad entry")).expect("bad entry"))
+                .map(|entry| PlayerEntry::from_document(entry.expect("bad entry")))
                 .collect()
                 .await),
+            Err(_) => Err(DatabaseError::ConnectionFailed),
+        }
+    }
+
+    pub async fn get_player(&self, tetrio_id: &str) -> DatabaseResult<Option<PlayerEntry>> {
+        match self
+            .collection
+            .find_one(
+                doc! {"$or": [{"tetrio_id": tetrio_id}, {"tetrio_data.username": tetrio_id}]},
+                None,
+            )
+            .await
+        {
+            Ok(entry) => Ok(entry.map(PlayerEntry::from_document)),
             Err(_) => Err(DatabaseError::ConnectionFailed),
         }
     }
@@ -96,59 +136,67 @@ impl PlayerCollection {
         }
     }
 
+    // Writes the updated data to the database
+    // Doesnt do any requesting or cache checking, and should thus only be used internally
+    async fn update(
+        &self,
+        new_data: LeaderboardUser,
+        cache_data: &CacheData,
+    ) -> DatabaseResult<()> {
+        if self
+            .collection
+            .count_documents(doc! {"tetrio_id": &new_data._id}, None)
+            .await
+            .unwrap()
+            == 0
+        {
+            println!("{} not in database, adding as new", new_data.username);
+            self.add_player(&new_data._id, None).await?;
+        }
+
+        let tetrio_data_doc = bson::to_document(&new_data).unwrap();
+        let cache_data = bson::to_document(&cache_data).unwrap();
+        self.collection
+            .update_one(
+                doc! {"tetrio_id": &new_data._id},
+                doc! {"$set":{"tetrio_data": tetrio_data_doc, "cache_data": cache_data}},
+                None,
+            )
+            .await
+            .expect("could not update player");
+
+        Ok(())
+    }
+
+    // Uses leaderboard data to write to the database
     // We don't care about cache timeouts here since whats grabbed is already grabbed, might as well put it in, right?
     pub async fn update_all_with_lb(&self) -> DatabaseResult<()> {
         println!("Started updating via leaderboard");
-
-        let response = crate::tetrio::leaderboard::request().await.unwrap();
-        let cache_data = bson::to_document(&response.cache).unwrap();
+        let response = tetrio::leaderboard::request().await.unwrap();
 
         for user in response.data.users {
-            if self
-                .collection
-                .count_documents(doc! {"tetrio_id": &user._id}, None)
-                .await
-                .unwrap()
-                == 0
-            {
-                println!("    {} not in database, adding as new", user.username);
-                self.add_player(&user._id, None).await?;
-            }
-
-            let tetrio_data_doc = bson::to_document(&user).unwrap();
-            self.collection
-                .update_one(
-                    doc! {"tetrio_id": &user._id},
-                    doc! {"$set":{"tetrio_data": tetrio_data_doc, "cache_data": &cache_data}},
-                    None,
-                )
-                .await
-                .expect("could not update player");
+            self.update(user, &response.cache).await?;
         }
 
         Ok(())
     }
 
-    // Returns true if not cached or cached for longer than 10 minutes
-    // We can't simply use cache.cached_until, since leaderboard data is cached for 1h, while regular user data is cached for 1min
-    pub async fn is_cached(&self, filter: impl Into<Option<Document>>) -> bool {
-        let cache_timeout = Duration::minutes(10);
+    // Update a list of players with API data
+    pub async fn update_player(&self, tetrio_id: &str) -> DatabaseResult<()> {
+        let is_cached = self
+            .get_player(tetrio_id)
+            .await?
+            .map_or(false, |p| p.is_cached());
 
-        if let Some(entry) = self.collection.find_one(filter, None).await.unwrap() {
-            let data: PlayerEntry = bson::from_document(entry).expect("bad entry");
-            if data.tetrio_data.is_some() {
-                if let Some(cache_data) = data.cache_data {
-                    let naive_dt = NaiveDateTime::from_timestamp(cache_data.cached_at / 1000, 0);
-                    let last_cached: DateTime<Utc> = DateTime::from_utc(naive_dt, Utc);
-                    let now = Utc::now();
+        if !is_cached {
+            let (new_data, cache_data) = match tetrio::user::request(tetrio_id).await {
+                Ok(response) => (response.data.user, response.cache),
+                Err(_) => return Err(DatabaseError::NotFound),
+            };
 
-                    if now <= last_cached.checked_add_signed(cache_timeout).unwrap_or(now) {
-                        return true;
-                    }
-                }
-            }
+            self.update(new_data, &cache_data).await?;
         }
 
-        false
+        Ok(())
     }
 }

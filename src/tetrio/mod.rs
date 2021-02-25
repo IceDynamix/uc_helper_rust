@@ -1,3 +1,7 @@
+/*
+    Optimally, the discord command should never call from this module directly. It should only access the database commands.
+*/
+
 use std::fmt::Formatter;
 
 use reqwest::Client;
