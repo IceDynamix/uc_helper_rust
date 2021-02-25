@@ -4,7 +4,11 @@ use std::fmt::Formatter;
 use mongodb::{Client, Database};
 use tracing::info;
 
+use crate::database::players::PlayerCollection;
+
 const DATABASE_NAME: &str = "uc_helper";
+
+pub mod players;
 
 #[derive(Debug)]
 pub enum DatabaseError {
@@ -36,11 +40,26 @@ impl std::error::Error for DatabaseError {
     }
 }
 
-pub async fn establish_connection() -> Result<Database, DatabaseError> {
-    let url = env::var("DATABASE_URL").expect("url must be set");
-    info!("Connecting to database");
-    match Client::with_uri_str(&url).await {
-        Ok(client) => Ok(client.database(DATABASE_NAME)),
-        Err(_) => Err(DatabaseError::ConnectionFailed),
+pub struct LocalDatabase {
+    database: Database,
+    pub players: PlayerCollection,
+}
+
+impl LocalDatabase {
+    pub async fn connect() -> Result<LocalDatabase, DatabaseError> {
+        let url = env::var("DATABASE_URL").expect("url must be set");
+        info!("Connecting to database");
+        let client = Client::with_uri_str(&url).await;
+
+        if client.is_err() {
+            return Err(DatabaseError::ConnectionFailed);
+        }
+
+        let database = client.unwrap().database(DATABASE_NAME);
+
+        Ok(LocalDatabase {
+            players: PlayerCollection::new(&database),
+            database,
+        })
     }
 }

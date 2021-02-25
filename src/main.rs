@@ -8,10 +8,8 @@ mod database;
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
 
-    let db = database::establish_connection().await?;
-    for coll_name in db.list_collection_names(None).await? {
-        println!("{}", coll_name);
-    }
+    let db = database::LocalDatabase::connect().await?;
+    db.players.add_player("1".to_string(), None).await;
 
     Ok(())
 }
