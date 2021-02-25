@@ -8,6 +8,8 @@ use crate::database::players::PlayerCollection;
 
 const DATABASE_NAME: &str = "uc_helper";
 
+type DatabaseResult<T> = Result<T, DatabaseError>;
+
 pub mod players;
 
 #[derive(Debug)]
@@ -16,26 +18,29 @@ pub enum DatabaseError {
     NotFound,
     CouldNotPush,
     DuplicateEntry,
+    CouldNotParse(String),
 }
 
 impl std::fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match *self {
+        match self {
             DatabaseError::ConnectionFailed => f.write_str("ConnectionFailed"),
             DatabaseError::NotFound => f.write_str("NotFound"),
             DatabaseError::CouldNotPush => f.write_str("CouldNotPush"),
             DatabaseError::DuplicateEntry => f.write_str("DuplicateEntry"),
+            DatabaseError::CouldNotParse(e) => f.write_str(e),
         }
     }
 }
 
 impl std::error::Error for DatabaseError {
     fn description(&self) -> &str {
-        match *self {
+        match self {
             DatabaseError::ConnectionFailed => "Connection to database failed",
             DatabaseError::NotFound => "Could not find item",
             DatabaseError::CouldNotPush => "Could not push to database",
             DatabaseError::DuplicateEntry => "Item already exists",
+            DatabaseError::CouldNotParse(_) => "Could not parse document to entry",
         }
     }
 }
