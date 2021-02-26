@@ -25,6 +25,18 @@ pub struct PlayerEntry {
 }
 
 impl PlayerEntry {
+    pub fn new(tetrio_id: &str, discord_id: Option<&String>) -> PlayerEntry {
+        let now = chrono::offset::Utc::now();
+        let link_timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
+        PlayerEntry {
+            tetrio_id: tetrio_id.to_string(),
+            discord_id: discord_id.cloned(),
+            link_timestamp,
+            tetrio_data: None,
+            cache_data: None,
+        }
+    }
+
     pub fn from_document(doc: Document) -> PlayerEntry {
         bson::from_document(doc).expect("bad entry")
     }
@@ -60,14 +72,15 @@ impl PlayerCollection {
         }
     }
 
+    // This only cares about adding the tetrio/discord link, it will not add tetrio_data! (async recursion issue)
+    // Call .update_player() afterwards if you need to add data
+    // Checks for duplicate players
     pub async fn add_player(
         &self,
         tetrio_id: &str,
         discord_id: Option<&String>,
     ) -> DatabaseResult<PlayerEntry> {
         info!("Adding {} to players", tetrio_id);
-        let now = chrono::offset::Utc::now();
-        let link_timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
 
         let filter: Document = match discord_id {
             None => doc! {"tetrio_id": tetrio_id},
@@ -83,14 +96,7 @@ impl PlayerCollection {
             Err(e) => return Err(e),
         }
 
-        let player_entry = PlayerEntry {
-            tetrio_id: tetrio_id.to_owned(),
-            discord_id: discord_id.cloned(),
-            link_timestamp,
-            tetrio_data: None,
-            cache_data: None,
-        };
-
+        let player_entry = PlayerEntry::new(tetrio_id, discord_id);
         match self
             .collection
             .insert_one(bson::to_document(&player_entry).unwrap(), None)
