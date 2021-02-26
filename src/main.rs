@@ -2,8 +2,6 @@
 
 use std::error::Error;
 
-use mongodb::bson::doc;
-
 mod database;
 mod tetrio;
 
@@ -12,10 +10,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
 
     let db = database::LocalDatabase::connect().await?;
-    let icedynamix = db.players.get_player("icedynamix").await?.unwrap();
+    // db.players.remove_all().await?;
+    // db.players.update_from_leaderboard().await?;
 
-    db.players.update_player("icedynamix").await?;
-    println!("{}", icedynamix.is_cached());
+    // db.players.update_player("icedynamix").await?;
+
+    // db.players.unlink_by_discord(126806732889522176).await?;
+    db.players.link(126806732889522176, "icedynamix").await?;
 
     Ok(())
 }

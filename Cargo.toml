@@ -10,9 +10,8 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-reqwest = {version = "0.10.9", features = ["json"]}
-# version required for reqwest
-tokio = {version = "0.2", features = ["signal"]}
+reqwest = { version = "0.10.9", features = ["json"] }
+tokio = { version = "0.2", features = ["signal"] } # version required for reqwest
 
 serenity = "0.9.2"
 dotenv = "0.15.0"
@@ -20,4 +19,5 @@ tracing = "0.1.22"
 tracing-subscriber = "0.2.15"
 
 mongodb = "1.1.1"
+bson = { version = "1.2.0", features = ["u2i"] } # implicitly converts unsigned to signed ints when pushing to mongo
 chrono = "0.4.19"

@@ -19,6 +19,7 @@ pub enum DatabaseError {
     CouldNotPush,
     DuplicateEntry,
     CouldNotParse(String),
+    FieldNotSet,
 }
 
 impl std::fmt::Display for DatabaseError {
@@ -29,6 +30,7 @@ impl std::fmt::Display for DatabaseError {
             DatabaseError::CouldNotPush => f.write_str("CouldNotPush"),
             DatabaseError::DuplicateEntry => f.write_str("DuplicateEntry"),
             DatabaseError::CouldNotParse(e) => f.write_str(e),
+            DatabaseError::FieldNotSet => f.write_str("FieldNotSet"),
         }
     }
 }
@@ -41,6 +43,7 @@ impl std::error::Error for DatabaseError {
             DatabaseError::CouldNotPush => "Could not push to database",
             DatabaseError::DuplicateEntry => "Item already exists",
             DatabaseError::CouldNotParse(_) => "Could not parse document to entry",
+            DatabaseError::FieldNotSet => "A specific field was not set",
         }
     }
 }
