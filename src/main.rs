@@ -13,8 +13,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // db.players.remove_all().await?;
     // db.players.update_from_leaderboard().await?;
 
-    // db.players.update_player("icedynamix").await?;
-
+    db.players.update_player("icedynamix").await?;
     // db.players.unlink_by_discord(126806732889522176).await?;
     db.players.link(126806732889522176, "icedynamix").await?;
 

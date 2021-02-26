@@ -1,5 +1,5 @@
-use bson::{doc, Document};
-use chrono::{DateTime, Duration, NaiveDateTime, SecondsFormat, Utc};
+use bson::{doc, DateTime, Document};
+use chrono::{Duration, TimeZone, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 use serenity::futures::StreamExt;
@@ -16,7 +16,7 @@ pub struct PlayerEntry {
     tetrio_id: String,
     discord_id: Option<u64>,
     // mongodb cant actually save unsigned integers to their full range but it'll be *fineeeeeeee*
-    link_timestamp: Option<String>,
+    link_timestamp: Option<DateTime>,
     tetrio_data: Option<LeaderboardUser>,
     cache_data: Option<CacheData>,
 }
@@ -43,8 +43,7 @@ impl PlayerEntry {
 
         if self.tetrio_data.is_some() {
             if let Some(cache_data) = &self.cache_data {
-                let naive_dt = NaiveDateTime::from_timestamp(cache_data.cached_at / 1000, 0);
-                let last_cached: DateTime<Utc> = DateTime::from_utc(naive_dt, Utc);
+                let last_cached = Utc.timestamp(cache_data.cached_at / 1000, 0);
                 let now = Utc::now();
 
                 if now <= last_cached.checked_add_signed(cache_timeout).unwrap_or(now) {
@@ -147,13 +146,10 @@ impl PlayerCollection {
 
         let entry = self.update_player(tetrio_id).await?; // if the specified player doesnt exist then this will err
 
-        let now = chrono::offset::Utc::now();
-        let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
-
         self.collection
             .update_one(
                 doc! {"tetrio_id": entry.tetrio_id},
-                doc! {"$set":{"discord_id": discord_id, "link_timestamp": timestamp}},
+                doc! {"$set":{"discord_id": discord_id, "link_timestamp": Utc::now()}},
                 None,
             )
             .await
