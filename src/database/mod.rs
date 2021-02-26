@@ -8,12 +8,14 @@ use tokio::stream::StreamExt;
 use tracing::info;
 
 use crate::database::players::PlayerCollection;
+use crate::database::tournaments::TournamentCollection;
 
 const DATABASE_NAME: &str = "uc_helper";
 
 type DatabaseResult<T> = Result<T, DatabaseError>;
 
 pub mod players;
+pub mod tournaments;
 
 // too lazy to implement async traits
 async fn get_entry<T: DeserializeOwned>(
@@ -83,6 +85,7 @@ impl std::error::Error for DatabaseError {
 pub struct LocalDatabase {
     database: Database,
     pub players: PlayerCollection,
+    pub tournaments: TournamentCollection,
 }
 
 impl LocalDatabase {
@@ -99,6 +102,7 @@ impl LocalDatabase {
 
         Ok(LocalDatabase {
             players: PlayerCollection::new(&database),
+            tournaments: TournamentCollection::new(&database),
             database,
         })
     }
