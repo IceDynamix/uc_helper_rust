@@ -129,7 +129,9 @@ impl PlayerCollection {
     // We don't care about cache timeouts here since whats grabbed with that one request is already grabbed, might as well put it in, right?
     pub async fn update_from_leaderboard(&self) -> DatabaseResult<()> {
         println!("Started updating via leaderboard");
-        let response = tetrio::leaderboard::request().await.unwrap();
+        let response = tetrio::leaderboard::request()
+            .await
+            .map_err(|e| DatabaseError::TetrioApiError(e.to_string()))?;
 
         for user in response.data.users {
             self.update(user, &response.cache).await?;

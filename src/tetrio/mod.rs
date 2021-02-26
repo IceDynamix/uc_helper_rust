@@ -59,6 +59,7 @@ pub struct SuccessfulResponse<T> {
 type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
 
 pub async fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
+    println!("Requesting from endpoint {}", endpoint);
     let client = Client::new();
     let url = format!("{}/{}", API_URL, endpoint);
     let request = client

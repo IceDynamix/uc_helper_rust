@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
-use crate::database::players::PlayerCollection;
 use crate::database::{DatabaseError, DatabaseResult};
+use crate::tetrio;
 use crate::tetrio::{leaderboard::LeaderboardUser, Rank};
 
 const COLLECTION_NAME: &str = "tournaments";
@@ -122,24 +122,21 @@ impl TournamentCollection {
         .await
     }
 
-    pub async fn add_snapshot(
-        &self,
-        name: &str,
-        player_collection: PlayerCollection,
-    ) -> DatabaseResult<()> {
+    pub async fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
         println!("Adding stat snapshot for tournament {}", name);
         if self.get_tournament(name).await?.is_none() {
             return Err(DatabaseError::NotFound);
         }
 
-        player_collection.update_from_leaderboard().await?;
-
-        let players = player_collection.get_players(None).await?;
-        let snapshot: Vec<Document> = players
-            .iter()
-            .filter(|entry| entry.tetrio_data.is_some())
-            .map(|entry| bson::to_document(&entry.tetrio_data).unwrap())
-            .collect();
+        // Will ensure that unranked players are not in the snapshot and are therefore easy to identify,
+        // since the players collection doesnt remove them when they become unranked
+        let snapshot: Vec<Document> = match tetrio::leaderboard::request().await {
+            Ok(response) => response.data.users,
+            Err(e) => return Err(DatabaseError::TetrioApiError(e.to_string())),
+        }
+        .iter()
+        .map(|u| bson::to_document(u).expect("Bad document"))
+        .collect();
 
         match self
             .collection

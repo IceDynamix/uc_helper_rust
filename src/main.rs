@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .create_tournament("Test Tournament 1", "TT1", dates, restrictions)
         .await?;
 
-    db.tournaments.add_snapshot("TT1", db.players).await?;
+    db.tournaments.add_snapshot("TT1").await?;
 
     Ok(())
 }

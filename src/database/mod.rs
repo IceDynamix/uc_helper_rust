@@ -54,6 +54,7 @@ pub enum DatabaseError {
     DuplicateEntry,
     CouldNotParse(String),
     FieldNotSet,
+    TetrioApiError(String),
 }
 
 impl std::fmt::Display for DatabaseError {
@@ -65,6 +66,7 @@ impl std::fmt::Display for DatabaseError {
             DatabaseError::DuplicateEntry => f.write_str("DuplicateEntry"),
             DatabaseError::CouldNotParse(e) => f.write_str(e),
             DatabaseError::FieldNotSet => f.write_str("FieldNotSet"),
+            DatabaseError::TetrioApiError(e) => f.write_str(e),
         }
     }
 }
@@ -78,6 +80,9 @@ impl std::error::Error for DatabaseError {
             DatabaseError::DuplicateEntry => "Item already exists",
             DatabaseError::CouldNotParse(_) => "Could not parse document to entry",
             DatabaseError::FieldNotSet => "A specific field was not set",
+            DatabaseError::TetrioApiError(_) => {
+                "Something happened while requesting data from the Tetrio API"
+            }
         }
     }
 }
