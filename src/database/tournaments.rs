@@ -1,8 +1,9 @@
-use bson::{doc, DateTime as BsonDateTime};
+use bson::{doc, DateTime as BsonDateTime, Document};
 use chrono::{DateTime, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
+use crate::database::players::PlayerCollection;
 use crate::database::{DatabaseError, DatabaseResult};
 use crate::tetrio::{leaderboard::LeaderboardUser, Rank};
 
@@ -98,6 +99,7 @@ impl TournamentCollection {
         dates: TournamentDates,
         restrictions: TournamentRestrictions,
     ) -> DatabaseResult<TournamentEntry> {
+        println!("Creating tournament {} ({})", name, shorthand);
         let entry = TournamentEntry::new(name, shorthand, dates, restrictions);
         match self
             .collection
@@ -118,5 +120,38 @@ impl TournamentCollection {
             doc! {"$or":[{"name": name}, {"shorthand": name}]},
         )
         .await
+    }
+
+    pub async fn add_snapshot(
+        &self,
+        name: &str,
+        player_collection: PlayerCollection,
+    ) -> DatabaseResult<()> {
+        println!("Adding stat snapshot for tournament {}", name);
+        if self.get_tournament(name).await?.is_none() {
+            return Err(DatabaseError::NotFound);
+        }
+
+        player_collection.update_from_leaderboard().await?;
+
+        let players = player_collection.get_players(None).await?;
+        let snapshot: Vec<Document> = players
+            .iter()
+            .filter(|entry| entry.tetrio_data.is_some())
+            .map(|entry| bson::to_document(&entry.tetrio_data).unwrap())
+            .collect();
+
+        match self
+            .collection
+            .update_one(
+                doc! {"$or":[{"name": name}, {"shorthand": name}]},
+                doc! {"$set": {"player_stats_snapshot": &snapshot}},
+                None,
+            )
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(_) => Err(DatabaseError::CouldNotPush),
+        }
     }
 }

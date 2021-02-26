@@ -4,7 +4,7 @@ use crate::tetrio::TetrioResponse;
 
 const ENDPOINT: &str = "users/lists/league/all";
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct LeagueData {
     pub gamesplayed: i64,
     pub gameswon: i64,
@@ -17,7 +17,7 @@ pub struct LeagueData {
     pub vs: Option<f64>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct LeaderboardUser {
     pub _id: String,
     pub username: String,

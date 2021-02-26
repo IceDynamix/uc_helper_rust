@@ -12,12 +12,12 @@ const COLLECTION_NAME: &str = "players";
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PlayerEntry {
-    tetrio_id: String,
-    discord_id: Option<u64>,
+    pub tetrio_id: String,
+    pub discord_id: Option<u64>,
     // mongodb cant actually save unsigned integers to their full range but it'll be *fineeeeeeee*
     link_timestamp: Option<DateTime>,
-    tetrio_data: Option<LeaderboardUser>,
-    cache_data: Option<CacheData>,
+    pub tetrio_data: Option<LeaderboardUser>,
+    pub cache_data: Option<CacheData>,
 }
 
 impl PlayerEntry {
