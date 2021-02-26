@@ -219,3 +219,18 @@ impl Rank {
         RANKS.iter()
     }
 }
+
+impl std::fmt::Display for Rank {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str().to_uppercase().as_str())
+    }
+}
+
+impl std::ops::Add<usize> for Rank {
+    type Output = Rank;
+
+    fn add(self, n: usize) -> Self::Output {
+        let index = Rank::iter().position(|r| self == *r).unwrap_or(0);
+        *Rank::iter().nth(index + n).unwrap_or(&Rank::X)
+    }
+}
