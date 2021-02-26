@@ -94,3 +94,127 @@ pub async fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
         Err(_) => Err(TetrioApiError::Error("Could not parse".to_string())),
     }
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+pub enum Rank {
+    Unranked,
+    D,
+    DPlus,
+    CMinus,
+    C,
+    CPlus,
+    BMinus,
+    B,
+    BPlus,
+    AMinus,
+    A,
+    APlus,
+    SMinus,
+    S,
+    SPlus,
+    SS,
+    U,
+    X,
+}
+
+impl Rank {
+    pub fn from_str(s: &str) -> Rank {
+        match s {
+            "d" => Rank::D,
+            "d+" => Rank::DPlus,
+            "c-" => Rank::CMinus,
+            "c" => Rank::C,
+            "c+" => Rank::CPlus,
+            "b-" => Rank::BMinus,
+            "b" => Rank::B,
+            "b+" => Rank::BPlus,
+            "a-" => Rank::AMinus,
+            "a" => Rank::A,
+            "a+" => Rank::APlus,
+            "s-" => Rank::SMinus,
+            "s" => Rank::S,
+            "s+" => Rank::SPlus,
+            "ss" => Rank::SS,
+            "u" => Rank::U,
+            "x" => Rank::X,
+            _ => Rank::Unranked,
+        }
+    }
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            Rank::D => "d",
+            Rank::DPlus => "d+",
+            Rank::CMinus => "c-",
+            Rank::C => "c",
+            Rank::CPlus => "c+",
+            Rank::BMinus => "b-",
+            Rank::B => "b",
+            Rank::BPlus => "b+",
+            Rank::AMinus => "a-",
+            Rank::A => "a",
+            Rank::APlus => "a+",
+            Rank::SMinus => "s-",
+            Rank::S => "s",
+            Rank::SPlus => "s+",
+            Rank::SS => "ss",
+            Rank::U => "u",
+            Rank::X => "x",
+            Rank::Unranked => "z",
+        }
+    }
+
+    pub fn to_color(&self) -> &'static str {
+        match self {
+            Rank::Unranked => "828282",
+            Rank::D => "856C84",
+            Rank::DPlus => "815880",
+            Rank::CMinus => "6C417C",
+            Rank::C => "67287B",
+            Rank::CPlus => "522278",
+            Rank::BMinus => "5949BE",
+            Rank::B => "4357B5",
+            Rank::BPlus => "4880B2",
+            Rank::AMinus => "35AA8C",
+            Rank::A => "3EA750",
+            Rank::APlus => "43b536",
+            Rank::SMinus => "B79E2B",
+            Rank::S => "d19e26",
+            Rank::SPlus => "dbaf37",
+            Rank::SS => "e39d3b",
+            Rank::U => "c75c2e",
+            Rank::X => "b852bf",
+        }
+    }
+
+    pub fn to_emoji(&self) -> &'static str {
+        match self {
+            Rank::X => "<:rank_x:758747882215047169>",
+            Rank::U => "<:rank_u:758747882127097887>",
+            Rank::SS => "<:rank_ss:758747882425024572>",
+            Rank::SPlus => "<:rank_splus:758747881951461417>",
+            Rank::S => "<:rank_s:758747881728507986>",
+            Rank::SMinus => "<:rank_sminus:758747881820651561>",
+            Rank::APlus => "<:rank_aplus:758747881820913684>",
+            Rank::A => "<:rank_a:758747881682763797>",
+            Rank::AMinus => "<:rank_aminus:758747881657204775>",
+            Rank::BPlus => "<:rank_bplus:758747881854337034>",
+            Rank::B => "<:rank_b:758747881779232778>",
+            Rank::BMinus => "<:rank_bminus:758747881833365505>",
+            Rank::CPlus => "<:rank_cplus:758747881833889802>",
+            Rank::C => "<:rank_c:758747881808068622>",
+            Rank::CMinus => "<:rank_cminus:758747881791422464>",
+            Rank::DPlus => "<:rank_dplus:758747881603072061>",
+            Rank::D => "<:rank_d:758747881896149052>",
+            _ => "<:rank_unranked:790331415836622868>",
+        }
+    }
+
+    pub fn iter() -> std::slice::Iter<'static, Rank> {
+        use Rank::*;
+        static RANKS: [Rank; 18] = [
+            Unranked, D, DPlus, CMinus, C, CPlus, BMinus, B, BPlus, AMinus, A, APlus, SMinus, S,
+            SPlus, SS, U, X,
+        ];
+        RANKS.iter()
+    }
+}
