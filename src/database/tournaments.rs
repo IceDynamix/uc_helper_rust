@@ -5,8 +5,7 @@ use chrono::{DateTime, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
-use crate::database::players::PlayerCollection;
-use crate::database::{DatabaseError, DatabaseResult};
+use crate::database::{DatabaseError, DatabaseResult, LocalDatabase};
 use crate::tetrio;
 use crate::tetrio::{leaderboard::LeaderboardUser, Rank};
 
@@ -112,10 +111,10 @@ pub struct RegistrationEntry {
 }
 
 impl RegistrationEntry {
-    pub fn new(tetrio_id: String) -> RegistrationEntry {
+    pub fn new(tetrio_id: &str) -> RegistrationEntry {
         RegistrationEntry {
             date: BsonDateTime::from(Utc::now()),
-            tetrio_id,
+            tetrio_id: tetrio_id.to_string(),
         }
     }
 }
@@ -185,11 +184,12 @@ impl TournamentEntry {
 
     pub async fn register(
         &self,
-        player_collection: PlayerCollection,
+        database: LocalDatabase,
         tetrio_id: &str,
         discord_id: Option<u64>,
     ) -> RegistrationResult {
-        let current_data = player_collection
+        let current_data = database
+            .players
             .update_player(tetrio_id)
             .await
             .map_err(RegistrationError::DatabaseError)?;
@@ -197,7 +197,8 @@ impl TournamentEntry {
         if current_data.discord_id.is_none() {
             match discord_id {
                 Some(id) => {
-                    player_collection
+                    database
+                        .players
                         .link(id, tetrio_id)
                         .await
                         .map_err(RegistrationError::DatabaseError)?;
@@ -212,6 +213,20 @@ impl TournamentEntry {
             .find(|u| current_data.tetrio_id == u._id);
 
         self.check_player_stats(snapshot_data, &current_data.tetrio_data.unwrap())?;
+
+        let reg_entry = bson::to_document(&RegistrationEntry::new(&current_data.tetrio_id))
+            .expect("bad document");
+
+        database
+            .tournaments
+            .collection
+            .update_one(
+                doc! {"shorthand": &self.shorthand},
+                doc! {"$push": {"registered_players": reg_entry}},
+                None,
+            )
+            .await
+            .map_err(|_| RegistrationError::DatabaseError(DatabaseError::CouldNotPush))?;
 
         Ok(())
     }

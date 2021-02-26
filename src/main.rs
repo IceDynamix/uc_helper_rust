@@ -12,8 +12,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let db = database::LocalDatabase::connect().await?;
     // println!("{:?}", db.players.get_player_by_tetrio("icedynamix").await?);
 
-    // let dates = TournamentDates::new(Utc::now(), Utc::now(), Utc::now(), Utc::now());
-    // let restrictions = TournamentRestrictions::new(75, 80f32, Rank::S);
+    // let now = Utc::now();
+    // let dates = TournamentDates::new(now, now, now, now);
+    // let restrictions = TournamentRestrictions::new(75, 80f64, Rank::S);
     // db.tournaments
     //     .create_tournament("Test Tournament 1", "TT1", dates, restrictions)
     //     .await?;
@@ -21,9 +22,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // db.tournaments.add_snapshot("TT1").await?;
 
     let tournament = db.tournaments.get_tournament("TT1").await?.unwrap();
-    tournament
-        .register(db.players, "icedynamix", Some(126806732889522176))
-        .await?;
+    println!(
+        "{:?}",
+        tournament
+            .register(db, "milkysune", Some(746868300163579915))
+            .await
+    );
 
     Ok(())
 }

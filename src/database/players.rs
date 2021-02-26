@@ -141,6 +141,7 @@ impl PlayerCollection {
     }
 
     pub async fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
+        println!("Linking {} to {}", tetrio_id, discord_id);
         if self.get_player_by_discord(discord_id).await?.is_some() {
             return Err(DatabaseError::DuplicateDiscordEntry);
         }
@@ -154,7 +155,7 @@ impl PlayerCollection {
                 None,
             )
             .await
-            .expect("could not update player");
+            .map_err(|_| DatabaseError::CouldNotPush)?;
 
         Ok(())
     }
@@ -167,7 +168,7 @@ impl PlayerCollection {
                 None,
             )
             .await
-            .expect("could not update player");
+            .map_err(|_| DatabaseError::CouldNotPush)?;
         Ok(())
     }
 
