@@ -106,13 +106,28 @@ impl TournamentRestrictions {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct RegistrationEntry {
+    date: BsonDateTime,
+    tetrio_id: String,
+}
+
+impl RegistrationEntry {
+    pub fn new(tetrio_id: String) -> RegistrationEntry {
+        RegistrationEntry {
+            date: BsonDateTime::from(Utc::now()),
+            tetrio_id,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct TournamentEntry {
     name: String,
     shorthand: String,
     created_at: BsonDateTime,
     dates: TournamentDates,
     restrictions: TournamentRestrictions,
-    registered_players: Vec<String>,
+    registered_players: Vec<RegistrationEntry>,
     // tetrio ids
     player_stats_snapshot: Vec<LeaderboardUser>,
 }
