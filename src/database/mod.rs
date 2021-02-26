@@ -116,3 +116,7 @@ impl LocalDatabase {
         })
     }
 }
+
+impl TypeMapKey for LocalDatabase {
+    type Value = Arc<LocalDatabase>;
+}
