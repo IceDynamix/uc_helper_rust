@@ -1,7 +1,10 @@
 use std::env;
 use std::fmt::Formatter;
 
-use mongodb::{Client, Database};
+use bson::Document;
+use mongodb::{Client, Collection, Database};
+use serde::de::DeserializeOwned;
+use tokio::stream::StreamExt;
 use tracing::info;
 
 use crate::database::players::PlayerCollection;
@@ -11,6 +14,35 @@ const DATABASE_NAME: &str = "uc_helper";
 type DatabaseResult<T> = Result<T, DatabaseError>;
 
 pub mod players;
+
+// too lazy to implement async traits
+async fn get_entry<T: DeserializeOwned>(
+    collection: &Collection,
+    filter: impl Into<Option<Document>>,
+) -> DatabaseResult<Option<T>> {
+    match collection.find_one(filter, None).await {
+        Ok(entry) => {
+            let doc: Option<Document> = entry;
+            Ok(doc.map(|d| bson::from_document(d).expect("could not convert to document")))
+        }
+        Err(_) => Err(DatabaseError::ConnectionFailed),
+    }
+}
+
+async fn get_entries<T: DeserializeOwned>(
+    collection: &Collection,
+    filter: impl Into<Option<Document>>,
+) -> DatabaseResult<Vec<T>> {
+    match collection.find(filter, None).await {
+        Ok(result) => Ok(result
+            .map(|doc| {
+                bson::from_document(doc.expect("bad entry")).expect("could not convert to document")
+            })
+            .collect()
+            .await),
+        Err(_) => Err(DatabaseError::ConnectionFailed),
+    }
+}
 
 #[derive(Debug)]
 pub enum DatabaseError {

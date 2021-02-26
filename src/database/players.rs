@@ -2,7 +2,6 @@ use bson::{doc, DateTime, Document};
 use chrono::{Duration, TimeZone, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
-use serenity::futures::StreamExt;
 
 use crate::database::{DatabaseError, DatabaseResult};
 use crate::tetrio;
@@ -190,21 +189,12 @@ impl PlayerCollection {
         }
     }
 
-    async fn get_player(
-        &self,
-        filter: impl Into<Option<Document>>,
-    ) -> DatabaseResult<Option<PlayerEntry>> {
-        match self.collection.find_one(filter, None).await {
-            Ok(entry) => Ok(entry.map(PlayerEntry::from_document)),
-            Err(_) => Err(DatabaseError::ConnectionFailed),
-        }
-    }
-
     pub async fn get_player_by_tetrio(
         &self,
         tetrio_id: &str,
     ) -> DatabaseResult<Option<PlayerEntry>> {
-        self.get_player(
+        crate::database::get_entry(
+            &self.collection,
             doc! {"$or": [{"tetrio_id": tetrio_id}, {"tetrio_data.username": tetrio_id}]},
         )
         .await
@@ -214,20 +204,14 @@ impl PlayerCollection {
         &self,
         discord_id: u64,
     ) -> DatabaseResult<Option<PlayerEntry>> {
-        self.get_player(doc! {"discord_id": discord_id}).await
+        crate::database::get_entry(&self.collection, doc! {"discord_id": discord_id}).await
     }
 
     pub async fn get_players(
         &self,
         filter: impl Into<Option<Document>>,
     ) -> DatabaseResult<Vec<PlayerEntry>> {
-        match self.collection.find(filter, None).await {
-            Ok(result) => Ok(result
-                .map(|entry| PlayerEntry::from_document(entry.expect("bad entry")))
-                .collect()
-                .await),
-            Err(_) => Err(DatabaseError::ConnectionFailed),
-        }
+        crate::database::get_entries(&self.collection, filter).await
     }
 
     pub async fn remove_players(&self, filter: Document) -> DatabaseResult<()> {
