@@ -2,7 +2,7 @@ use std::fmt::Formatter;
 
 use bson::{doc, DateTime as BsonDateTime, Document};
 use chrono::{DateTime, Utc};
-use mongodb::{Collection, Database};
+use mongodb::sync::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
 use crate::database::{DatabaseError, DatabaseResult, LocalDatabase};
@@ -182,7 +182,7 @@ impl TournamentEntry {
         }
     }
 
-    pub async fn register(
+    pub fn register(
         &self,
         database: LocalDatabase,
         tetrio_id: &str,
@@ -191,7 +191,6 @@ impl TournamentEntry {
         let current_data = database
             .players
             .update_player(tetrio_id)
-            .await
             .map_err(RegistrationError::DatabaseError)?;
 
         if current_data.discord_id.is_none() {
@@ -200,7 +199,6 @@ impl TournamentEntry {
                     database
                         .players
                         .link(id, tetrio_id)
-                        .await
                         .map_err(RegistrationError::DatabaseError)?;
                 }
                 None => return Err(RegistrationError::MissingArgument),
@@ -225,7 +223,6 @@ impl TournamentEntry {
                 doc! {"$push": {"registered_players": reg_entry}},
                 None,
             )
-            .await
             .map_err(|_| RegistrationError::DatabaseError(DatabaseError::CouldNotPush))?;
 
         Ok(())
@@ -243,7 +240,7 @@ impl TournamentCollection {
         }
     }
 
-    pub async fn create_tournament(
+    pub fn create_tournament(
         &self,
         name: &str,
         shorthand: &str,
@@ -252,36 +249,31 @@ impl TournamentCollection {
     ) -> DatabaseResult<TournamentEntry> {
         println!("Creating tournament {} ({})", name, shorthand);
         let entry = TournamentEntry::new(name, shorthand, dates, restrictions);
-        match self
-            .collection
-            .insert_one(
-                bson::to_document(&entry).expect("could not convert to document"),
-                None,
-            )
-            .await
-        {
+        match self.collection.insert_one(
+            bson::to_document(&entry).expect("could not convert to document"),
+            None,
+        ) {
             Ok(_) => Ok(entry),
             Err(_) => Err(DatabaseError::CouldNotPush),
         }
     }
 
-    pub async fn get_tournament(&self, name: &str) -> DatabaseResult<Option<TournamentEntry>> {
+    pub fn get_tournament(&self, name: &str) -> DatabaseResult<Option<TournamentEntry>> {
         crate::database::get_entry(
             &self.collection,
             doc! {"$or":[{"name": name}, {"shorthand": name}]},
         )
-        .await
     }
 
-    pub async fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
+    pub fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
         println!("Adding stat snapshot for tournament {}", name);
-        if self.get_tournament(name).await?.is_none() {
+        if self.get_tournament(name)?.is_none() {
             return Err(DatabaseError::NotFound);
         }
 
         // Will ensure that unranked players are not in the snapshot and are therefore easy to identify,
         // since the players collection doesnt remove them when they become unranked
-        let snapshot: Vec<Document> = match tetrio::leaderboard::request().await {
+        let snapshot: Vec<Document> = match tetrio::leaderboard::request() {
             Ok(response) => response.data.users,
             Err(e) => return Err(DatabaseError::TetrioApiError(e)),
         }
@@ -289,15 +281,11 @@ impl TournamentCollection {
         .map(|u| bson::to_document(u).expect("Bad document"))
         .collect();
 
-        match self
-            .collection
-            .update_one(
-                doc! {"$or":[{"name": name}, {"shorthand": name}]},
-                doc! {"$set": {"player_stats_snapshot": &snapshot}},
-                None,
-            )
-            .await
-        {
+        match self.collection.update_one(
+            doc! {"$or":[{"name": name}, {"shorthand": name}]},
+            doc! {"$set": {"player_stats_snapshot": &snapshot}},
+            None,
+        ) {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::CouldNotPush),
         }

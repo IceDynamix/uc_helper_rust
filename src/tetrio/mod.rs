@@ -4,7 +4,7 @@
 
 use std::fmt::Formatter;
 
-use reqwest::Client;
+use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,7 +43,7 @@ struct TetrioResponseStruct {
     error: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct CacheData {
     pub status: String,
     pub cached_at: i64,
@@ -58,7 +58,7 @@ pub struct SuccessfulResponse<T> {
 
 type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
 
-pub async fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
+pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
     println!("Requesting from endpoint {}", endpoint);
     let client = Client::new();
     let url = format!("{}/{}", API_URL, endpoint);
@@ -68,12 +68,9 @@ pub async fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
         .build()
         .expect("Could not build request");
 
-    let response = client
-        .execute(request)
-        .await
-        .expect("Could not execute request");
+    let response = client.execute(request).expect("Could not execute request");
 
-    let parsed_response: TetrioResponseStruct = response.json().await.expect("Could not parse");
+    let parsed_response: TetrioResponseStruct = response.json().expect("Could not parse");
 
     if !parsed_response.success {
         return Err(TetrioApiError::Error(parsed_response.error.unwrap()));

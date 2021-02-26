@@ -12,6 +12,6 @@ pub struct UserData {
     pub user: LeaderboardUser,
 }
 
-pub async fn request(tetrio_id: &str) -> TetrioResponse<UserData> {
-    crate::tetrio::request::<UserData>(&format!("{}/{}", ENDPOINT, tetrio_id)).await
+pub fn request(tetrio_id: &str) -> TetrioResponse<UserData> {
+    crate::tetrio::request::<UserData>(&format!("{}/{}", ENDPOINT, tetrio_id))
 }

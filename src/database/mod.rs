@@ -1,10 +1,11 @@
 use std::env;
 use std::fmt::Formatter;
+use std::sync::Arc;
 
 use bson::Document;
-use mongodb::{Client, Collection, Database};
+use mongodb::sync::{Client, Collection, Database};
 use serde::de::DeserializeOwned;
-use tokio::stream::StreamExt;
+use serenity::prelude::TypeMapKey;
 use tracing::info;
 
 use crate::database::players::PlayerCollection;
@@ -19,11 +20,11 @@ pub mod players;
 pub mod tournaments;
 
 // too lazy to implement async traits
-async fn get_entry<T: DeserializeOwned>(
+fn get_entry<T: DeserializeOwned>(
     collection: &Collection,
     filter: impl Into<Option<Document>>,
 ) -> DatabaseResult<Option<T>> {
-    match collection.find_one(filter, None).await {
+    match collection.find_one(filter, None) {
         Ok(entry) => {
             let doc: Option<Document> = entry;
             Ok(doc.map(|d| bson::from_document(d).expect("could not convert to document")))
@@ -32,17 +33,16 @@ async fn get_entry<T: DeserializeOwned>(
     }
 }
 
-async fn get_entries<T: DeserializeOwned>(
+fn get_entries<T: DeserializeOwned>(
     collection: &Collection,
     filter: impl Into<Option<Document>>,
 ) -> DatabaseResult<Vec<T>> {
-    match collection.find(filter, None).await {
+    match collection.find(filter, None) {
         Ok(result) => Ok(result
             .map(|doc| {
                 bson::from_document(doc.expect("bad entry")).expect("could not convert to document")
             })
-            .collect()
-            .await),
+            .collect()),
         Err(_) => Err(DatabaseError::ConnectionFailed),
     }
 }
@@ -98,10 +98,10 @@ pub struct LocalDatabase {
 }
 
 impl LocalDatabase {
-    pub async fn connect() -> Result<LocalDatabase, DatabaseError> {
+    pub fn connect() -> Result<LocalDatabase, DatabaseError> {
         let url = env::var("DATABASE_URL").expect("url must be set");
         info!("Connecting to database");
-        let client = Client::with_uri_str(&url).await;
+        let client = Client::with_uri_str(&url);
 
         if client.is_err() {
             return Err(DatabaseError::ConnectionFailed);

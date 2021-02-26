@@ -1,6 +1,6 @@
 use bson::{doc, DateTime, Document};
 use chrono::{Duration, TimeZone, Utc};
-use mongodb::{Collection, Database};
+use mongodb::sync::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
 use crate::database::{DatabaseError, DatabaseResult};
@@ -10,7 +10,7 @@ use crate::tetrio::CacheData;
 
 const COLLECTION_NAME: &str = "players";
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PlayerEntry {
     pub tetrio_id: String,
     pub discord_id: Option<u64>,
@@ -68,26 +68,26 @@ impl PlayerCollection {
     // Update a player with API data with respect to cached data
     // Implicitly adds a new player if they don't already exist, no add function required
     // The only situation a user doesn't already exist is when they are unranked or got ranked before the hourly leaderboard update hit
-    pub async fn update_player(&self, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
+    pub fn update_player(&self, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         println!("Updating {}", tetrio_id);
-        let previous_entry = self.get_player_by_tetrio(tetrio_id).await?;
+        let previous_entry = self.get_player_by_tetrio(tetrio_id)?;
         let is_cached = previous_entry.map_or(false, |e| e.is_cached());
 
         if is_cached {
-            Ok(self.get_player_by_tetrio(tetrio_id).await?.unwrap()) // eh who cares about performance
+            Ok(self.get_player_by_tetrio(tetrio_id)?.unwrap()) // eh who cares about performance
         } else {
-            let (new_data, cache_data) = match tetrio::user::request(tetrio_id).await {
+            let (new_data, cache_data) = match tetrio::user::request(tetrio_id) {
                 Ok(response) => (response.data.user, response.cache),
                 Err(_) => return Err(DatabaseError::NotFound),
             };
 
-            self.update(new_data, &cache_data).await
+            self.update(new_data, &cache_data)
         }
     }
 
     // Writes the updated data to the database
     // Doesnt do any requesting or cache checking, and should thus only be used internally
-    async fn update(
+    fn update(
         &self,
         new_data: LeaderboardUser,
         cache_data: &CacheData,
@@ -95,7 +95,6 @@ impl PlayerCollection {
         if self
             .collection
             .count_documents(doc! {"tetrio_id": &new_data._id}, None)
-            .await
             .unwrap()
             == 0
         {
@@ -104,7 +103,6 @@ impl PlayerCollection {
             if self
                 .collection
                 .insert_one(bson::to_document(&player_entry).unwrap(), None)
-                .await
                 .is_err()
             {
                 return Err(DatabaseError::CouldNotPush);
@@ -119,34 +117,31 @@ impl PlayerCollection {
                 doc! {"$set":{"tetrio_data": tetrio_data_doc, "cache_data": cache_data}},
                 None,
             )
-            .await
             .expect("could not update player");
 
-        Ok(self.get_player_by_tetrio(&new_data._id).await?.unwrap())
+        Ok(self.get_player_by_tetrio(&new_data._id)?.unwrap())
     }
 
     // Uses leaderboard data to write to the database so only a single request is used
     // We don't care about cache timeouts here since whats grabbed with that one request is already grabbed, might as well put it in, right?
-    pub async fn update_from_leaderboard(&self) -> DatabaseResult<()> {
+    pub fn update_from_leaderboard(&self) -> DatabaseResult<()> {
         println!("Started updating via leaderboard");
-        let response = tetrio::leaderboard::request()
-            .await
-            .map_err(DatabaseError::TetrioApiError)?;
+        let response = tetrio::leaderboard::request().map_err(DatabaseError::TetrioApiError)?;
 
         for user in response.data.users {
-            self.update(user, &response.cache).await?;
+            self.update(user, &response.cache)?;
         }
 
         Ok(())
     }
 
-    pub async fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
+    pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
         println!("Linking {} to {}", tetrio_id, discord_id);
-        if self.get_player_by_discord(discord_id).await?.is_some() {
+        if self.get_player_by_discord(discord_id)?.is_some() {
             return Err(DatabaseError::DuplicateDiscordEntry);
         }
 
-        let entry = self.update_player(tetrio_id).await?; // if the specified player doesnt exist then this will err
+        let entry = self.update_player(tetrio_id)?; // if the specified player doesnt exist then this will err
 
         self.collection
             .update_one(
@@ -154,80 +149,71 @@ impl PlayerCollection {
                 doc! {"$set":{"discord_id": discord_id, "link_timestamp": Utc::now()}},
                 None,
             )
-            .await
             .map_err(|_| DatabaseError::CouldNotPush)?;
 
         Ok(())
     }
 
-    async fn unlink(&self, filter: Document) -> DatabaseResult<()> {
+    fn unlink(&self, filter: Document) -> DatabaseResult<()> {
         self.collection
             .update_one(
                 filter,
                 doc! {"$unset": {"discord_id": "", "link_timestamp": ""}},
                 None,
             )
-            .await
             .map_err(|_| DatabaseError::CouldNotPush)?;
         Ok(())
     }
 
-    pub async fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<()> {
-        if self.get_player_by_discord(discord_id).await?.is_some() {
-            self.unlink(doc! {"discord_id": discord_id}).await
+    pub fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<()> {
+        if self.get_player_by_discord(discord_id)?.is_some() {
+            self.unlink(doc! {"discord_id": discord_id})
         } else {
             Err(DatabaseError::NotFound)
         }
     }
 
-    pub async fn unlink_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<()> {
-        if let Some(entry) = self.get_player_by_tetrio(tetrio_id).await? {
+    pub fn unlink_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<()> {
+        if let Some(entry) = self.get_player_by_tetrio(tetrio_id)? {
             if entry.discord_id.is_none() {
                 Err(DatabaseError::FieldNotSet)
             } else {
-                self.unlink(doc! {"tetrio_id": tetrio_id}).await
+                self.unlink(doc! {"tetrio_id": tetrio_id})
             }
         } else {
             Err(DatabaseError::NotFound)
         }
     }
 
-    pub async fn get_player_by_tetrio(
-        &self,
-        tetrio_id: &str,
-    ) -> DatabaseResult<Option<PlayerEntry>> {
+    pub fn get_player_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<Option<PlayerEntry>> {
         crate::database::get_entry(
             &self.collection,
             doc! {"$or": [{"tetrio_id": tetrio_id}, {"tetrio_data.username": tetrio_id}]},
         )
-        .await
     }
 
-    pub async fn get_player_by_discord(
-        &self,
-        discord_id: u64,
-    ) -> DatabaseResult<Option<PlayerEntry>> {
-        crate::database::get_entry(&self.collection, doc! {"discord_id": discord_id}).await
+    pub fn get_player_by_discord(&self, discord_id: u64) -> DatabaseResult<Option<PlayerEntry>> {
+        crate::database::get_entry(&self.collection, doc! {"discord_id": discord_id})
     }
 
-    pub async fn get_players(
+    pub fn get_players(
         &self,
         filter: impl Into<Option<Document>>,
     ) -> DatabaseResult<Vec<PlayerEntry>> {
-        crate::database::get_entries(&self.collection, filter).await
+        crate::database::get_entries(&self.collection, filter)
     }
 
-    pub async fn remove_players(&self, filter: Document) -> DatabaseResult<()> {
+    pub fn remove_players(&self, filter: Document) -> DatabaseResult<()> {
         println!("Deleting players with filter {:?}", filter);
-        match self.collection.delete_many(filter, None).await {
+        match self.collection.delete_many(filter, None) {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::ConnectionFailed),
         }
     }
 
-    pub async fn remove_all(&self) -> DatabaseResult<()> {
+    pub fn remove_all(&self) -> DatabaseResult<()> {
         println!("Deleting the entire collection for some reason??");
-        match self.collection.drop(None).await {
+        match self.collection.drop(None) {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::ConnectionFailed),
         }

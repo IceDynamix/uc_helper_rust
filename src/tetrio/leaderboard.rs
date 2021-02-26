@@ -33,6 +33,6 @@ pub struct LeaderboardData {
     pub users: Vec<LeaderboardUser>,
 }
 
-pub async fn request() -> TetrioResponse<LeaderboardData> {
-    crate::tetrio::request::<LeaderboardData>(ENDPOINT).await
+pub fn request() -> TetrioResponse<LeaderboardData> {
+    crate::tetrio::request::<LeaderboardData>(ENDPOINT)
 }
