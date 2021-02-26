@@ -1,13 +1,68 @@
+use std::fmt::Formatter;
+
 use bson::{doc, DateTime as BsonDateTime, Document};
 use chrono::{DateTime, Utc};
 use mongodb::{Collection, Database};
 use serde::{Deserialize, Serialize};
 
+use crate::database::players::PlayerCollection;
 use crate::database::{DatabaseError, DatabaseResult};
 use crate::tetrio;
 use crate::tetrio::{leaderboard::LeaderboardUser, Rank};
 
 const COLLECTION_NAME: &str = "tournaments";
+
+type RegistrationResult = Result<(), RegistrationError>;
+
+#[derive(Debug)]
+pub enum RegistrationError {
+    CurrentRankTooHigh(Rank),
+    AnnouncementRankTooHigh(Rank),
+    NotEnoughGames(i64),
+    RdTooHigh(f64),
+    UnrankedOnAnnouncementDay,
+    NoTournamentActive,
+    MissingArgument,
+    DatabaseError(DatabaseError),
+}
+
+impl std::fmt::Display for RegistrationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RegistrationError::CurrentRankTooHigh(_) => f.write_str("CurrentRankTooHigh"),
+            RegistrationError::AnnouncementRankTooHigh(_) => f.write_str("AnnouncementRankTooHigh"),
+            RegistrationError::NotEnoughGames(_) => f.write_str("NotEnoughGames"),
+            RegistrationError::RdTooHigh(_) => f.write_str("RdTooHigh"),
+            RegistrationError::UnrankedOnAnnouncementDay => {
+                f.write_str("UnrankedOnAnnouncementDay")
+            }
+            RegistrationError::NoTournamentActive => f.write_str("NoTournamentActive"),
+            RegistrationError::MissingArgument => f.write_str("MissingArgument"),
+            RegistrationError::DatabaseError(_) => f.write_str("DatabaseError"),
+        }
+    }
+}
+
+impl std::error::Error for RegistrationError {
+    fn description(&self) -> &str {
+        match self {
+            RegistrationError::CurrentRankTooHigh(_) => "Current rank is too high",
+            RegistrationError::AnnouncementRankTooHigh(_) => {
+                "Rank was too high on announcement day"
+            }
+            RegistrationError::NotEnoughGames(_) => "Not enough games played by announcement day",
+            RegistrationError::RdTooHigh(_) => "RD was too high at announcement day",
+            RegistrationError::UnrankedOnAnnouncementDay => {
+                "Player was unranked on announcement day"
+            }
+            RegistrationError::NoTournamentActive => "There is no tournament ongoing",
+            RegistrationError::MissingArgument => "Something was missing while registering",
+            RegistrationError::DatabaseError(_) => {
+                "Something went wrong while accessing the database"
+            }
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TournamentDates {
@@ -35,13 +90,13 @@ impl TournamentDates {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TournamentRestrictions {
-    min_ranked_games: u32,
-    max_rd: f32,
-    max_rank: Rank,
+    pub min_ranked_games: i64,
+    pub max_rd: f64,
+    pub max_rank: Rank,
 }
 
 impl TournamentRestrictions {
-    pub fn new(min_ranked_games: u32, max_rd: f32, max_rank: Rank) -> TournamentRestrictions {
+    pub fn new(min_ranked_games: i64, max_rd: f64, max_rank: Rank) -> TournamentRestrictions {
         TournamentRestrictions {
             min_ranked_games,
             max_rd,
@@ -78,6 +133,72 @@ impl TournamentEntry {
             registered_players: Vec::new(),
             player_stats_snapshot: Vec::new(),
         }
+    }
+
+    fn check_player_stats(
+        &self,
+        snapshot_data: Option<&LeaderboardUser>,
+        current_data: &LeaderboardUser,
+    ) -> RegistrationResult {
+        match snapshot_data {
+            None => Err(RegistrationError::UnrankedOnAnnouncementDay),
+            Some(snap) => {
+                let announce_rank = Rank::from_str(&snap.league.rank);
+                if announce_rank > self.restrictions.max_rank {
+                    return Err(RegistrationError::AnnouncementRankTooHigh(announce_rank));
+                }
+
+                let games_played = snap.league.gamesplayed;
+                if games_played < self.restrictions.min_ranked_games {
+                    return Err(RegistrationError::NotEnoughGames(games_played));
+                }
+
+                let rd = snap.league.rd.unwrap_or(999f64);
+                if rd > self.restrictions.max_rd {
+                    return Err(RegistrationError::RdTooHigh(rd));
+                }
+
+                let current_rank = Rank::from_str(&current_data.league.rank);
+                if current_rank > self.restrictions.max_rank + 1 {
+                    return Err(RegistrationError::CurrentRankTooHigh(current_rank));
+                }
+
+                Ok(())
+            }
+        }
+    }
+
+    pub async fn register(
+        &self,
+        player_collection: PlayerCollection,
+        tetrio_id: &str,
+        discord_id: Option<u64>,
+    ) -> RegistrationResult {
+        let current_data = player_collection
+            .update_player(tetrio_id)
+            .await
+            .map_err(RegistrationError::DatabaseError)?;
+
+        if current_data.discord_id.is_none() {
+            match discord_id {
+                Some(id) => {
+                    player_collection
+                        .link(id, tetrio_id)
+                        .await
+                        .map_err(RegistrationError::DatabaseError)?;
+                }
+                None => return Err(RegistrationError::MissingArgument),
+            }
+        }
+
+        let snapshot_data = self
+            .player_stats_snapshot
+            .iter()
+            .find(|u| current_data.tetrio_id == u._id);
+
+        self.check_player_stats(snapshot_data, &current_data.tetrio_data.unwrap())?;
+
+        Ok(())
     }
 }
 
@@ -132,7 +253,7 @@ impl TournamentCollection {
         // since the players collection doesnt remove them when they become unranked
         let snapshot: Vec<Document> = match tetrio::leaderboard::request().await {
             Ok(response) => response.data.users,
-            Err(e) => return Err(DatabaseError::TetrioApiError(e.to_string())),
+            Err(e) => return Err(DatabaseError::TetrioApiError(e)),
         }
         .iter()
         .map(|u| bson::to_document(u).expect("Bad document"))

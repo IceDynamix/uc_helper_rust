@@ -9,6 +9,7 @@ use tracing::info;
 
 use crate::database::players::PlayerCollection;
 use crate::database::tournaments::TournamentCollection;
+use crate::tetrio::TetrioApiError;
 
 const DATABASE_NAME: &str = "uc_helper";
 
@@ -51,10 +52,11 @@ pub enum DatabaseError {
     ConnectionFailed,
     NotFound,
     CouldNotPush,
-    DuplicateEntry,
+    DuplicateTetrioEntry,
+    DuplicateDiscordEntry,
     CouldNotParse(String),
     FieldNotSet,
-    TetrioApiError(String),
+    TetrioApiError(TetrioApiError),
 }
 
 impl std::fmt::Display for DatabaseError {
@@ -63,10 +65,11 @@ impl std::fmt::Display for DatabaseError {
             DatabaseError::ConnectionFailed => f.write_str("ConnectionFailed"),
             DatabaseError::NotFound => f.write_str("NotFound"),
             DatabaseError::CouldNotPush => f.write_str("CouldNotPush"),
-            DatabaseError::DuplicateEntry => f.write_str("DuplicateEntry"),
+            DatabaseError::DuplicateTetrioEntry => f.write_str("DuplicateTetrioEntry"),
+            DatabaseError::DuplicateDiscordEntry => f.write_str("DuplicateDiscordEntry"),
             DatabaseError::CouldNotParse(e) => f.write_str(e),
             DatabaseError::FieldNotSet => f.write_str("FieldNotSet"),
-            DatabaseError::TetrioApiError(e) => f.write_str(e),
+            DatabaseError::TetrioApiError(e) => f.write_str(&*e.to_string()),
         }
     }
 }
@@ -77,7 +80,8 @@ impl std::error::Error for DatabaseError {
             DatabaseError::ConnectionFailed => "Connection to database failed",
             DatabaseError::NotFound => "Could not find item",
             DatabaseError::CouldNotPush => "Could not push to database",
-            DatabaseError::DuplicateEntry => "Item already exists",
+            DatabaseError::DuplicateTetrioEntry => "Tetrio user already exists",
+            DatabaseError::DuplicateDiscordEntry => "Discord user already exists",
             DatabaseError::CouldNotParse(_) => "Could not parse document to entry",
             DatabaseError::FieldNotSet => "A specific field was not set",
             DatabaseError::TetrioApiError(_) => {

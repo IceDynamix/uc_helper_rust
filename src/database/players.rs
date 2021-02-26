@@ -131,7 +131,7 @@ impl PlayerCollection {
         println!("Started updating via leaderboard");
         let response = tetrio::leaderboard::request()
             .await
-            .map_err(|e| DatabaseError::TetrioApiError(e.to_string()))?;
+            .map_err(DatabaseError::TetrioApiError)?;
 
         for user in response.data.users {
             self.update(user, &response.cache).await?;
@@ -142,7 +142,7 @@ impl PlayerCollection {
 
     pub async fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
         if self.get_player_by_discord(discord_id).await?.is_some() {
-            return Err(DatabaseError::DuplicateEntry);
+            return Err(DatabaseError::DuplicateDiscordEntry);
         }
 
         let entry = self.update_player(tetrio_id).await?; // if the specified player doesnt exist then this will err
