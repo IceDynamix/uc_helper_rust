@@ -92,7 +92,7 @@ impl std::error::Error for DatabaseError {
 }
 
 pub struct LocalDatabase {
-    database: Database,
+    _database: Database,
     pub players: PlayerCollection,
     pub tournaments: TournamentCollection,
 }
@@ -112,7 +112,7 @@ impl LocalDatabase {
         Ok(LocalDatabase {
             players: PlayerCollection::new(&database),
             tournaments: TournamentCollection::new(&database),
-            database,
+            _database: database,
         })
     }
 }

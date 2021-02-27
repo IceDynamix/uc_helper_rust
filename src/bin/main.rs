@@ -2,18 +2,26 @@
 
 use std::error::Error;
 
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
 use uc_helper_rust as uc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
 
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber).expect("Failed to start the logger");
+
     let db = uc::database::LocalDatabase::connect()?;
     // println!("{:?}", db.players.get_player_by_tetrio("icedynamix")?);
 
-    let mut bot = uc::discord::Bot::new(db).await;
+    let mut bot = uc::discord::new_client(db).await;
 
-    if let Err(why) = bot.0.start().await {
+    if let Err(why) = bot.start().await {
         println!("Client error: {:?}", why);
     }
 
