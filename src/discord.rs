@@ -1,17 +1,17 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use serenity::framework::standard::{
+    help_commands,
+    macros::{group, help, hook},
+    Args, CommandGroup, CommandResult, HelpOptions,
+};
+use serenity::http::Http;
+use serenity::model::prelude::*;
 use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
-use serenity::framework::standard::{
-    Args,
-    CommandGroup,
-    CommandResult, help_commands, HelpOptions, macros::{group, help, hook},
-};
-use serenity::http::Http;
-use serenity::model::prelude::*;
 use tracing::{info, warn};
 
 use crate::commands::{owner::*, player::*};
@@ -156,12 +156,64 @@ impl TypeMapKey for ShardManagerContainer {
 }
 
 pub mod util {
+    use std::str::FromStr;
+
+    use chrono::{TimeZone, Utc};
+    use serenity::builder::CreateEmbed;
     use serenity::model::prelude::*;
     use serenity::prelude::*;
+
+    use crate::database::players::PlayerEntry;
 
     pub async fn reply(ctx: &Context, msg: &Message, reply: &str) {
         if let Err(e) = msg.channel_id.say(&ctx.http, reply).await {
             tracing::warn!("Error sending message: {}", e);
         }
+    }
+
+    pub fn player_data_to_embed(entry: &PlayerEntry) -> CreateEmbed {
+        let mut e = CreateEmbed::default();
+
+        if let Some(player) = &entry.tetrio_data {
+            e.title(&player.username);
+            e.url(format!("https://ch.tetr.io/u/{}", player._id));
+
+            let league = &player.league;
+
+            let rank = crate::tetrio::Rank::from_str(&league.rank).unwrap();
+
+            e.color(u64::from_str_radix(rank.to_color(), 16).unwrap_or(0));
+
+            e.thumbnail(rank.to_img_url());
+
+            e.fields(vec![
+                (
+                    "Tetra Rating",
+                    format!(
+                        "{:.0} ± {:.1}",
+                        &league.rating,
+                        &league.rd.unwrap_or_default()
+                    ),
+                    false,
+                ),
+                (
+                    "APM",
+                    format!("{:.2}", &league.apm.unwrap_or_default()),
+                    true,
+                ),
+                (
+                    "PPS",
+                    format!("{:.2}", &league.pps.unwrap_or_default()),
+                    true,
+                ),
+                ("VS", format!("{:.2}", &league.vs.unwrap_or_default()), true),
+            ]);
+        }
+
+        if let Some(cache_data) = &entry.cache_data {
+            e.timestamp(Utc.timestamp(cache_data.cached_at / 1000, 0).to_rfc3339());
+        }
+
+        e
     }
 }

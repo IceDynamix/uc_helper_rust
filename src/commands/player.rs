@@ -43,7 +43,12 @@ async fn stats(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         }
         Some(entry) => {
             let updated_entry = database.players.update_player(&entry.tetrio_id).unwrap();
-            util::reply(ctx, msg, &format!("{:?}", updated_entry)).await;
+            msg.channel_id
+                .send_message(&ctx.http, |m| {
+                    m.set_embed(util::player_data_to_embed(&updated_entry))
+                })
+                .await
+                .expect("Could not send message");
         }
     }
 

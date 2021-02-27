@@ -105,28 +105,6 @@ pub enum Rank {
 }
 
 impl Rank {
-    pub fn from_str(s: &str) -> Rank {
-        match s {
-            "d" => Rank::D,
-            "d+" => Rank::DPlus,
-            "c-" => Rank::CMinus,
-            "c" => Rank::C,
-            "c+" => Rank::CPlus,
-            "b-" => Rank::BMinus,
-            "b" => Rank::B,
-            "b+" => Rank::BPlus,
-            "a-" => Rank::AMinus,
-            "a" => Rank::A,
-            "a+" => Rank::APlus,
-            "s-" => Rank::SMinus,
-            "s" => Rank::S,
-            "s+" => Rank::SPlus,
-            "ss" => Rank::SS,
-            "u" => Rank::U,
-            "x" => Rank::X,
-            _ => Rank::Unranked,
-        }
-    }
     pub fn to_str(&self) -> &'static str {
         match self {
             Rank::D => "d",
@@ -196,6 +174,10 @@ impl Rank {
         }
     }
 
+    pub fn to_img_url(&self) -> String {
+        format!("https://tetr.io/res/league-ranks/{}.png", self.to_str())
+    }
+
     pub fn iter() -> std::slice::Iter<'static, Rank> {
         use Rank::*;
         static RANKS: [Rank; 18] = [
@@ -203,6 +185,35 @@ impl Rank {
             SPlus, SS, U, X,
         ];
         RANKS.iter()
+    }
+}
+
+impl std::str::FromStr for Rank {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        let parsed = match s {
+            "d" => Rank::D,
+            "d+" => Rank::DPlus,
+            "c-" => Rank::CMinus,
+            "c" => Rank::C,
+            "c+" => Rank::CPlus,
+            "b-" => Rank::BMinus,
+            "b" => Rank::B,
+            "b+" => Rank::BPlus,
+            "a-" => Rank::AMinus,
+            "a" => Rank::A,
+            "a+" => Rank::APlus,
+            "s-" => Rank::SMinus,
+            "s" => Rank::S,
+            "s+" => Rank::SPlus,
+            "ss" => Rank::SS,
+            "u" => Rank::U,
+            "x" => Rank::X,
+            _ => Rank::Unranked,
+        };
+
+        Ok(parsed)
     }
 }
 

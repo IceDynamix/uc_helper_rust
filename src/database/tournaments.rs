@@ -1,4 +1,6 @@
-use bson::{DateTime as BsonDateTime, doc, Document};
+use std::str::FromStr;
+
+use bson::{doc, DateTime as BsonDateTime, Document};
 use chrono::{DateTime, Utc};
 use mongodb::sync::{Collection, Database};
 use serde::{Deserialize, Serialize};
@@ -126,7 +128,7 @@ impl TournamentEntry {
         match snapshot_data {
             None => Err(RegistrationError::UnrankedOnAnnouncementDay),
             Some(snap) => {
-                let announce_rank = Rank::from_str(&snap.league.rank);
+                let announce_rank = Rank::from_str(&snap.league.rank).unwrap();
                 if announce_rank > self.restrictions.max_rank {
                     return Err(RegistrationError::AnnouncementRankTooHigh(announce_rank));
                 }
@@ -141,7 +143,7 @@ impl TournamentEntry {
                     return Err(RegistrationError::RdTooHigh(rd));
                 }
 
-                let current_rank = Rank::from_str(&current_data.league.rank);
+                let current_rank = Rank::from_str(&current_data.league.rank).unwrap();
                 if current_rank > self.restrictions.max_rank + 1 {
                     return Err(RegistrationError::CurrentRankTooHigh(current_rank));
                 }
