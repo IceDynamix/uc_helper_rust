@@ -1,20 +1,20 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use serenity::framework::standard::{
-    help_commands,
-    macros::{group, help, hook},
-    Args, CommandGroup, CommandResult, HelpOptions,
-};
-use serenity::http::Http;
-use serenity::model::prelude::*;
 use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
+use serenity::framework::standard::{
+    Args,
+    CommandGroup,
+    CommandResult, help_commands, HelpOptions, macros::{group, help, hook},
+};
+use serenity::http::Http;
+use serenity::model::prelude::*;
 use tracing::{info, warn};
 
-use crate::commands::owner::*;
+use crate::commands::{owner::*, player::*};
 use crate::database::LocalDatabase;
 
 const PREFIX: &str = ".";
@@ -23,6 +23,11 @@ const PREFIX: &str = ".";
 #[commands(echo)]
 #[owners_only]
 struct Owner;
+
+#[group]
+#[commands(stats)]
+#[owners_only]
+struct Player;
 
 pub async fn new_client(database: LocalDatabase) -> Client {
     let token = std::env::var("DISCORD_TOKEN").expect("No Discord token");
@@ -74,6 +79,7 @@ fn create_framework(owners: HashSet<UserId>) -> StandardFramework {
         .after(after_command)
         .help(&HELP)
         .group(&OWNER_GROUP)
+        .group(&PLAYER_GROUP)
 }
 
 // make database available globally so we only maintain a single connection!
@@ -84,7 +90,7 @@ async fn setup_shared_data(database: LocalDatabase, client: &Client) {
     data.insert::<ShardManagerContainer>(client.shard_manager.clone());
 }
 
-async fn _get_database(ctx: &Context) -> Arc<LocalDatabase> {
+pub async fn get_database(ctx: &Context) -> Arc<LocalDatabase> {
     let data_read = ctx.data.read().await;
     data_read
         .get::<LocalDatabase>()
@@ -147,4 +153,15 @@ struct ShardManagerContainer;
 
 impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
+}
+
+pub mod util {
+    use serenity::model::prelude::*;
+    use serenity::prelude::*;
+
+    pub async fn reply(ctx: &Context, msg: &Message, reply: &str) {
+        if let Err(e) = msg.channel_id.say(&ctx.http, reply).await {
+            tracing::warn!("Error sending message: {}", e);
+        }
+    }
 }
