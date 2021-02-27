@@ -1,9 +1,8 @@
-use std::fmt::Formatter;
-
-use bson::{doc, DateTime as BsonDateTime, Document};
+use bson::{DateTime as BsonDateTime, doc, Document};
 use chrono::{DateTime, Utc};
 use mongodb::sync::{Collection, Database};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::database::{DatabaseError, DatabaseResult, LocalDatabase};
 use crate::tetrio;
@@ -13,54 +12,24 @@ const COLLECTION_NAME: &str = "tournaments";
 
 type RegistrationResult = Result<(), RegistrationError>;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum RegistrationError {
+    #[error("Current rank is too high ({0})")]
     CurrentRankTooHigh(Rank),
+    #[error("Rank was too high on announcement day ({0})")]
     AnnouncementRankTooHigh(Rank),
+    #[error("Not enough games played by announcement day ({0})")]
     NotEnoughGames(i64),
+    #[error("RD was too high at announcement day ({0})")]
     RdTooHigh(f64),
+    #[error("Player was unranked on announcement day")]
     UnrankedOnAnnouncementDay,
+    #[error("There is no tournament ongoing")]
     NoTournamentActive,
+    #[error("Something was missing while registering")]
     MissingArgument,
-    DatabaseError(DatabaseError),
-}
-
-impl std::fmt::Display for RegistrationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RegistrationError::CurrentRankTooHigh(_) => f.write_str("CurrentRankTooHigh"),
-            RegistrationError::AnnouncementRankTooHigh(_) => f.write_str("AnnouncementRankTooHigh"),
-            RegistrationError::NotEnoughGames(_) => f.write_str("NotEnoughGames"),
-            RegistrationError::RdTooHigh(_) => f.write_str("RdTooHigh"),
-            RegistrationError::UnrankedOnAnnouncementDay => {
-                f.write_str("UnrankedOnAnnouncementDay")
-            }
-            RegistrationError::NoTournamentActive => f.write_str("NoTournamentActive"),
-            RegistrationError::MissingArgument => f.write_str("MissingArgument"),
-            RegistrationError::DatabaseError(_) => f.write_str("DatabaseError"),
-        }
-    }
-}
-
-impl std::error::Error for RegistrationError {
-    fn description(&self) -> &str {
-        match self {
-            RegistrationError::CurrentRankTooHigh(_) => "Current rank is too high",
-            RegistrationError::AnnouncementRankTooHigh(_) => {
-                "Rank was too high on announcement day"
-            }
-            RegistrationError::NotEnoughGames(_) => "Not enough games played by announcement day",
-            RegistrationError::RdTooHigh(_) => "RD was too high at announcement day",
-            RegistrationError::UnrankedOnAnnouncementDay => {
-                "Player was unranked on announcement day"
-            }
-            RegistrationError::NoTournamentActive => "There is no tournament ongoing",
-            RegistrationError::MissingArgument => "Something was missing while registering",
-            RegistrationError::DatabaseError(_) => {
-                "Something went wrong while accessing the database"
-            }
-        }
-    }
+    #[error("Something went wrong while accessing the database")]
+    DatabaseError(#[from] DatabaseError),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -184,7 +153,7 @@ impl TournamentEntry {
 
     pub fn register(
         &self,
-        database: LocalDatabase,
+        database: &LocalDatabase,
         tetrio_id: &str,
         discord_id: Option<u64>,
     ) -> RegistrationResult {

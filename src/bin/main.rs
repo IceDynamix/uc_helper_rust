@@ -19,13 +19,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let db = uc::database::LocalDatabase::connect()?;
     // println!("{:?}", db.players.get_player_by_tetrio("icedynamix")?);
 
-    let mut bot = uc::discord::new_client(db).await;
+    // let mut bot = uc::discord::new_client(db).await;
+    //
+    // if let Err(why) = bot.start().await {
+    //     println!("Client error: {:?}", why);
+    // }
 
-    if let Err(why) = bot.start().await {
-        println!("Client error: {:?}", why);
-    }
+    db.players.update_player("icedynamix")?;
 
-    // println!("{:?}", db.players.get_player_by_tetrio("icedynamix").await?);
+    // let tournament = db.tournaments.get_tournament("TT1").unwrap().unwrap();
+    // assert!(tournament.register(&db, "icedynamix", None).is_ok());
+    // assert!(tournament.register(&db, "icedynamix", None).is_err());
 
     // let now = Utc::now();
     // let dates = TournamentDates::new(now, now, now, now);

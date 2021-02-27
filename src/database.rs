@@ -1,11 +1,11 @@
 use std::env;
-use std::fmt::Formatter;
 use std::sync::Arc;
 
 use bson::Document;
 use mongodb::sync::{Client, Collection, Database};
 use serde::de::DeserializeOwned;
 use serenity::prelude::TypeMapKey;
+use thiserror::Error;
 use tracing::info;
 
 use crate::database::players::PlayerCollection;
@@ -47,48 +47,24 @@ fn get_entries<T: DeserializeOwned>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DatabaseError {
+    #[error("Connection to database failed")]
     ConnectionFailed,
+    #[error("Could not find item")]
     NotFound,
+    #[error("Could not push to database")]
     CouldNotPush,
+    #[error("Tetrio user already exists")]
     DuplicateTetrioEntry,
+    #[error("Discord user already exists")]
     DuplicateDiscordEntry,
+    #[error("Could not parse document to entry: {0}")]
     CouldNotParse(String),
+    #[error("A specific field was not set")]
     FieldNotSet,
-    TetrioApiError(TetrioApiError),
-}
-
-impl std::fmt::Display for DatabaseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DatabaseError::ConnectionFailed => f.write_str("ConnectionFailed"),
-            DatabaseError::NotFound => f.write_str("NotFound"),
-            DatabaseError::CouldNotPush => f.write_str("CouldNotPush"),
-            DatabaseError::DuplicateTetrioEntry => f.write_str("DuplicateTetrioEntry"),
-            DatabaseError::DuplicateDiscordEntry => f.write_str("DuplicateDiscordEntry"),
-            DatabaseError::CouldNotParse(e) => f.write_str(e),
-            DatabaseError::FieldNotSet => f.write_str("FieldNotSet"),
-            DatabaseError::TetrioApiError(e) => f.write_str(&*e.to_string()),
-        }
-    }
-}
-
-impl std::error::Error for DatabaseError {
-    fn description(&self) -> &str {
-        match self {
-            DatabaseError::ConnectionFailed => "Connection to database failed",
-            DatabaseError::NotFound => "Could not find item",
-            DatabaseError::CouldNotPush => "Could not push to database",
-            DatabaseError::DuplicateTetrioEntry => "Tetrio user already exists",
-            DatabaseError::DuplicateDiscordEntry => "Discord user already exists",
-            DatabaseError::CouldNotParse(_) => "Could not parse document to entry",
-            DatabaseError::FieldNotSet => "A specific field was not set",
-            DatabaseError::TetrioApiError(_) => {
-                "Something happened while requesting data from the Tetrio API"
-            }
-        }
-    }
+    #[error("Something happened while requesting data from the Tetrio API")]
+    TetrioApiError(#[from] TetrioApiError),
 }
 
 pub struct LocalDatabase {

@@ -8,31 +8,17 @@ use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use thiserror::Error;
 
 pub mod leaderboard;
 pub mod user;
 
 const API_URL: &str = "https://ch.tetr.io/api";
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum TetrioApiError {
+    #[error("Something happened while requesting from tetrio: {0}")]
     Error(String),
-}
-
-impl std::error::Error for TetrioApiError {
-    fn description(&self) -> &str {
-        match self {
-            TetrioApiError::Error(_) => "Something went wrong",
-        }
-    }
-}
-
-impl std::fmt::Display for TetrioApiError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TetrioApiError::Error(e) => f.write_str(e),
-        }
-    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -60,17 +46,20 @@ type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
 
 pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
     println!("Requesting from endpoint {}", endpoint);
-    let client = Client::new();
-    let url = format!("{}/{}", API_URL, endpoint);
-    let request = client
-        .request(reqwest::Method::GET, &url)
-        .header("X-Session-Header", "IceDynamix") // i have no idea whether im doing this right
-        .build()
-        .expect("Could not build request");
 
-    let response = client.execute(request).expect("Could not execute request");
+    let parsed_response: TetrioResponseStruct = tokio::task::block_in_place(|| {
+        let client = Client::new();
+        let url = format!("{}/{}", API_URL, endpoint);
+        let request = client
+            .request(reqwest::Method::GET, &url)
+            .header("X-Session-Header", "IceDynamix") // i have no idea whether im doing this right
+            .build()
+            .expect("Could not build request");
 
-    let parsed_response: TetrioResponseStruct = response.json().expect("Could not parse");
+        let response = client.execute(request).expect("Could not execute request");
+
+        response.json().expect("Could not parse")
+    });
 
     if !parsed_response.success {
         return Err(TetrioApiError::Error(parsed_response.error.unwrap()));
