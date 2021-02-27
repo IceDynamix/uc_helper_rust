@@ -72,6 +72,7 @@ fn create_framework(owners: HashSet<UserId>) -> StandardFramework {
         .configure(|c| c.prefix(PREFIX).owners(owners))
         .before(before_command)
         .after(after_command)
+        .help(&HELP)
         .group(&OWNER_GROUP)
 }
 
