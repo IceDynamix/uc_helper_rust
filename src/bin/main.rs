@@ -2,18 +2,16 @@
 
 use std::error::Error;
 
-mod database;
-mod discord;
-mod tetrio;
+use uc_helper_rust as uc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
 
-    let db = database::LocalDatabase::connect()?;
+    let db = uc::database::LocalDatabase::connect()?;
     // println!("{:?}", db.players.get_player_by_tetrio("icedynamix")?);
 
-    let mut bot = discord::Bot::new(db).await;
+    let mut bot = uc::discord::Bot::new(db).await;
 
     if let Err(why) = bot.0.start().await {
         println!("Client error: {:?}", why);
