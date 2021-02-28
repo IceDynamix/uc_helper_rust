@@ -1,21 +1,21 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use serenity::client::bridge::gateway::GatewayIntents;
-use serenity::framework::standard::{
-    help_commands,
-    macros::{group, help, hook},
-    Args, CommandGroup, CommandResult, HelpOptions,
-};
-use serenity::http::Http;
-use serenity::model::prelude::*;
 use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
+use serenity::client::bridge::gateway::GatewayIntents;
+use serenity::framework::standard::{
+    Args,
+    CommandGroup,
+    CommandResult, help_commands, HelpOptions, macros::{group, help, hook},
+};
+use serenity::http::Http;
+use serenity::model::prelude::*;
 use tracing::{info, warn};
 
-use crate::commands::{owner::*, player::*, staff::*};
+use crate::commands::{owner::*, player::*, staff::*, tournament::*};
 use crate::database::LocalDatabase;
 
 pub const PREFIX: &str = ".";
@@ -31,11 +31,21 @@ struct Owner;
 #[commands(staff_ping, update_all)]
 #[allowed_roles("staff")]
 #[help_available(false)]
+#[only_in(guilds)]
+#[description("Management commands restricted to staff members")]
 struct Staff;
 
 #[group]
 #[commands(stats, link, unlink)]
+#[description("Tetr.io player related commands")]
 struct Player;
+
+#[group]
+#[commands(register, unregister)]
+#[prefix("tournament")]
+#[only_in(guilds)]
+#[description("Tournament related commands")]
+struct Tournament;
 
 pub async fn new_client(database: LocalDatabase) -> Client {
     let token = std::env::var("DISCORD_TOKEN").expect("No Discord token");
@@ -45,7 +55,11 @@ pub async fn new_client(database: LocalDatabase) -> Client {
     let client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
-        .intents(GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGES)
+        .intents(
+            GatewayIntents::GUILDS
+                | GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::DIRECT_MESSAGES,
+        )
         .await
         .expect("Couldn't create client");
 
@@ -90,6 +104,7 @@ fn create_framework(owners: HashSet<UserId>) -> StandardFramework {
         .group(&OWNER_GROUP)
         .group(&PLAYER_GROUP)
         .group(&STAFF_GROUP)
+        .group(&TOURNAMENT_GROUP)
 }
 
 // make database available globally so we only maintain a single connection!
@@ -112,7 +127,6 @@ pub async fn get_database(ctx: &Context) -> Arc<LocalDatabase> {
 #[lacking_ownership("hide")]
 #[lacking_permissions("hide")]
 #[lacking_role("hide")]
-#[group_prefix(".")]
 async fn help(
     context: &Context,
     msg: &Message,
@@ -178,8 +192,10 @@ pub mod util {
 
     use chrono::{TimeZone, Utc};
     use serenity::builder::CreateEmbed;
+    use serenity::framework::standard::CommandResult;
     use serenity::model::prelude::*;
     use serenity::prelude::*;
+    use tokio::time;
 
     use crate::database::players::PlayerEntry;
     use crate::discord::{CONFIRM_EMOJI, ERROR_EMOJI};
@@ -240,5 +256,14 @@ pub mod util {
         msg.react(&ctx.http, ReactionType::Unicode(ERROR_EMOJI.to_string()))
             .await
             .expect("Could not react?");
+    }
+
+    pub async fn delay_delete(ctx: &Context, reply: Option<Message>) -> CommandResult {
+        if let Some(reply) = reply {
+            time::sleep(time::Duration::from_secs(15)).await;
+            reply.delete(&ctx.http).await?;
+        }
+
+        Ok(())
     }
 }

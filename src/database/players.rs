@@ -137,11 +137,20 @@ impl PlayerCollection {
 
     pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         tracing::info!("Linking {} to {}", tetrio_id, discord_id);
-        if self.get_player_by_discord(discord_id)?.is_some() {
-            return Err(DatabaseError::DuplicateDiscordEntry);
+        if let Some(entry) = self.get_player_by_discord(discord_id)? {
+            let data = entry.tetrio_data.expect("Expected data");
+            return if tetrio_id == data._id || tetrio_id == data.username {
+                Err(DatabaseError::AlreadyLinked)
+            } else {
+                Err(DatabaseError::DuplicateDiscordEntry)
+            };
         }
 
         let entry = self.update_player(tetrio_id)?; // if the specified player doesnt exist then this will err
+
+        if entry.discord_id.map_or(false, |id| id != discord_id) {
+            return Err(DatabaseError::DuplicateTetrioEntry);
+        }
 
         self.collection
             .update_one(

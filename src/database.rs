@@ -65,6 +65,8 @@ pub enum DatabaseError {
     FieldNotSet,
     #[error("Something happened while requesting data from the Tetrio API")]
     TetrioApiError(#[from] TetrioApiError),
+    #[error("User is trying to link user that's already linked to them")]
+    AlreadyLinked,
 }
 
 pub struct LocalDatabase {
