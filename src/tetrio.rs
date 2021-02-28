@@ -45,7 +45,7 @@ pub struct SuccessfulResponse<T> {
 type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
 
 pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
-    println!("Requesting from endpoint {}", endpoint);
+    tracing::info!("Requesting from endpoint {}", endpoint);
 
     let parsed_response: TetrioResponseStruct = tokio::task::block_in_place(|| {
         let client = Client::new();

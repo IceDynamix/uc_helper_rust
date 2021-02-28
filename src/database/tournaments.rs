@@ -218,7 +218,7 @@ impl TournamentCollection {
         dates: TournamentDates,
         restrictions: TournamentRestrictions,
     ) -> DatabaseResult<TournamentEntry> {
-        println!("Creating tournament {} ({})", name, shorthand);
+        tracing::info!("Creating tournament {} ({})", name, shorthand);
         let entry = TournamentEntry::new(name, shorthand, dates, restrictions);
         match self.collection.insert_one(
             bson::to_document(&entry).expect("could not convert to document"),
@@ -237,7 +237,7 @@ impl TournamentCollection {
     }
 
     pub fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
-        println!("Adding stat snapshot for tournament {}", name);
+        tracing::info!("Adding stat snapshot for tournament {}", name);
         if self.get_tournament(name)?.is_none() {
             return Err(DatabaseError::NotFound);
         }

@@ -69,7 +69,7 @@ impl PlayerCollection {
     // Implicitly adds a new player if they don't already exist, no add function required
     // The only situation a user doesn't already exist is when they are unranked or got ranked before the hourly leaderboard update hit
     pub fn update_player(&self, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
-        println!("Updating {}", tetrio_id);
+        tracing::info!("Updating {}", tetrio_id);
         let previous_entry = self.get_player_by_tetrio(tetrio_id)?;
         let is_cached = previous_entry.map_or(false, |e| e.is_cached());
 
@@ -98,7 +98,7 @@ impl PlayerCollection {
             .unwrap()
             == 0
         {
-            println!("{} not in database, adding as new", new_data.username);
+            tracing::info!("{} not in database, adding as new", new_data.username);
             let player_entry = PlayerEntry::new(&new_data._id, None);
             if self
                 .collection
@@ -125,7 +125,7 @@ impl PlayerCollection {
     // Uses leaderboard data to write to the database so only a single request is used
     // We don't care about cache timeouts here since whats grabbed with that one request is already grabbed, might as well put it in, right?
     pub fn update_from_leaderboard(&self) -> DatabaseResult<()> {
-        println!("Started updating via leaderboard");
+        tracing::info!("Started updating via leaderboard");
         let response = tetrio::leaderboard::request().map_err(DatabaseError::TetrioApiError)?;
 
         for user in response.data.users {
@@ -136,7 +136,7 @@ impl PlayerCollection {
     }
 
     pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
-        println!("Linking {} to {}", tetrio_id, discord_id);
+        tracing::info!("Linking {} to {}", tetrio_id, discord_id);
         if self.get_player_by_discord(discord_id)?.is_some() {
             return Err(DatabaseError::DuplicateDiscordEntry);
         }
@@ -204,7 +204,7 @@ impl PlayerCollection {
     }
 
     pub fn remove_players(&self, filter: Document) -> DatabaseResult<()> {
-        println!("Deleting players with filter {:?}", filter);
+        tracing::info!("Deleting players with filter {:?}", filter);
         match self.collection.delete_many(filter, None) {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::ConnectionFailed),
@@ -212,7 +212,7 @@ impl PlayerCollection {
     }
 
     pub fn remove_all(&self) -> DatabaseResult<()> {
-        println!("Deleting the entire collection for some reason??");
+        tracing::info!("Deleting the entire collection for some reason??");
         match self.collection.drop(None) {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::ConnectionFailed),

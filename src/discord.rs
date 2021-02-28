@@ -26,7 +26,7 @@ const PREFIX: &str = ".";
 struct Owner;
 
 #[group]
-#[commands(staff_ping)]
+#[commands(staff_ping, update_all)]
 #[allowed_roles("staff")]
 #[help_available(false)]
 struct Staff;
