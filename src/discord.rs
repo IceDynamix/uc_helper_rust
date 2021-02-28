@@ -18,7 +18,9 @@ use tracing::{info, warn};
 use crate::commands::{owner::*, player::*, staff::*};
 use crate::database::LocalDatabase;
 
-const PREFIX: &str = ".";
+pub const PREFIX: &str = ".";
+pub const CONFIRM_EMOJI: &str = "✅";
+pub const ERROR_EMOJI: &str = "❌";
 
 #[group]
 #[commands(owner_ping, owner_echo)]
@@ -32,7 +34,7 @@ struct Owner;
 struct Staff;
 
 #[group]
-#[commands(stats)]
+#[commands(stats, link, unlink)]
 struct Player;
 
 pub async fn new_client(database: LocalDatabase) -> Client {
@@ -134,15 +136,22 @@ async fn before_command(_ctx: &Context, msg: &Message, command_name: &str) -> bo
 
 #[hook]
 async fn after_command(
-    _ctx: &Context,
-    _msg: &Message,
+    ctx: &Context,
+    msg: &Message,
     command_name: &str,
     command_result: CommandResult,
 ) {
     match command_result {
-        Ok(()) => info!("Processed command '{}'", command_name),
-        Err(why) => warn!("Command '{}' returned error {:?}", command_name, why),
-    }
+        Ok(()) => {
+            info!("Processed command '{}'", command_name);
+        }
+        Err(why) => {
+            warn!("Command '{}' returned error {:?}", command_name, why);
+            msg.react(&ctx.http, ReactionType::Unicode(ERROR_EMOJI.to_string()))
+                .await
+                .expect("Could not react?");
+        }
+    };
 }
 
 struct Handler;
@@ -173,12 +182,7 @@ pub mod util {
     use serenity::prelude::*;
 
     use crate::database::players::PlayerEntry;
-
-    pub async fn reply(ctx: &Context, msg: &Message, reply: &str) {
-        if let Err(e) = msg.channel_id.say(&ctx.http, reply).await {
-            tracing::warn!("Error sending message: {}", e);
-        }
-    }
+    use crate::discord::{CONFIRM_EMOJI, ERROR_EMOJI};
 
     pub fn player_data_to_embed(entry: &PlayerEntry) -> CreateEmbed {
         let mut e = CreateEmbed::default();
@@ -224,5 +228,17 @@ pub mod util {
         }
 
         e
+    }
+
+    pub async fn react_confirm(ctx: &Context, msg: &Message) {
+        msg.react(&ctx.http, ReactionType::Unicode(CONFIRM_EMOJI.to_string()))
+            .await
+            .expect("Could not react?");
+    }
+
+    pub async fn react_deny(ctx: &Context, msg: &Message) {
+        msg.react(&ctx.http, ReactionType::Unicode(ERROR_EMOJI.to_string()))
+            .await
+            .expect("Could not react?");
     }
 }

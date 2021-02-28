@@ -135,7 +135,7 @@ impl PlayerCollection {
         Ok(())
     }
 
-    pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<()> {
+    pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         tracing::info!("Linking {} to {}", tetrio_id, discord_id);
         if self.get_player_by_discord(discord_id)?.is_some() {
             return Err(DatabaseError::DuplicateDiscordEntry);
@@ -151,7 +151,7 @@ impl PlayerCollection {
             )
             .map_err(|_| DatabaseError::CouldNotPush)?;
 
-        Ok(())
+        Ok(self.get_player_by_discord(discord_id)?.unwrap())
     }
 
     fn unlink(&self, filter: Document) -> DatabaseResult<()> {
