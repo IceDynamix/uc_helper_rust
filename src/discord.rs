@@ -28,6 +28,7 @@ struct Owner;
 #[group]
 #[commands(staff_ping)]
 #[allowed_roles("staff")]
+#[help_available(false)]
 struct Staff;
 
 #[group]
