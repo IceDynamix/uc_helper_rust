@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::{
     help_commands,
     macros::{group, help, hook},
@@ -14,19 +15,23 @@ use serenity::{
 };
 use tracing::{info, warn};
 
-use crate::commands::{owner::*, player::*};
+use crate::commands::{owner::*, player::*, staff::*};
 use crate::database::LocalDatabase;
 
 const PREFIX: &str = ".";
 
 #[group]
-#[commands(echo)]
+#[commands(owner_ping, owner_echo)]
 #[owners_only]
 struct Owner;
 
 #[group]
+#[commands(staff_ping)]
+#[allowed_roles("staff")]
+struct Staff;
+
+#[group]
 #[commands(stats)]
-#[owners_only]
 struct Player;
 
 pub async fn new_client(database: LocalDatabase) -> Client {
@@ -37,6 +42,7 @@ pub async fn new_client(database: LocalDatabase) -> Client {
     let client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
+        .intents(GatewayIntents::GUILDS | GatewayIntents::GUILD_MESSAGES)
         .await
         .expect("Couldn't create client");
 
@@ -80,6 +86,7 @@ fn create_framework(owners: HashSet<UserId>) -> StandardFramework {
         .help(&HELP)
         .group(&OWNER_GROUP)
         .group(&PLAYER_GROUP)
+        .group(&STAFF_GROUP)
 }
 
 // make database available globally so we only maintain a single connection!
@@ -99,9 +106,10 @@ pub async fn get_database(ctx: &Context) -> Arc<LocalDatabase> {
 }
 
 #[help]
-#[lacking_ownership(hide)]
-#[lacking_permissions(hide)]
-#[lacking_role(hide)]
+#[lacking_ownership("hide")]
+#[lacking_permissions("hide")]
+#[lacking_role("hide")]
+#[group_prefix(".")]
 async fn help(
     context: &Context,
     msg: &Message,
