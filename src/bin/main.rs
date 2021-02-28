@@ -1,6 +1,5 @@
 #![allow(dead_code)] // temporary until everything has been implemented
 
-use tracing::error;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use uc_helper_rust as uc;
@@ -21,6 +20,6 @@ async fn main() {
 
     let mut bot = uc::discord::new_client(db).await;
     if let Err(why) = bot.start().await {
-        error!("Client error: {:?}", why);
+        tracing::error!("Client error: {:?}", why);
     }
 }

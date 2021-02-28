@@ -98,8 +98,8 @@ pub struct TournamentEntry {
     dates: TournamentDates,
     restrictions: TournamentRestrictions,
     registered_players: Vec<RegistrationEntry>,
-    // tetrio ids
     player_stats_snapshot: Vec<LeaderboardUser>,
+    active: bool,
 }
 
 impl TournamentEntry {
@@ -117,6 +117,7 @@ impl TournamentEntry {
             restrictions,
             registered_players: Vec::new(),
             player_stats_snapshot: Vec::new(),
+            active: false,
         }
     }
 
@@ -260,5 +261,45 @@ impl TournamentCollection {
             Ok(_) => Ok(()),
             Err(_) => Err(DatabaseError::CouldNotPush),
         }
+    }
+
+    pub fn set_active(&self, name: Option<&str>) -> DatabaseResult<Option<TournamentEntry>> {
+        let tournament = if let Some(name) = name {
+            match self.get_tournament(name)? {
+                Some(t) => Some(t),
+                None => return Err(DatabaseError::NotFound),
+            }
+        } else {
+            None
+        };
+
+        // set all inactive
+        if self
+            .collection
+            .update_many(doc! {}, doc! {"$set": {"active": false}}, None)
+            .is_err()
+        {
+            return Err(DatabaseError::CouldNotPush);
+        }
+
+        tracing::info!("Set all tournaments to inactive");
+
+        // set specified tournament active
+        if let Some(tournament) = &tournament {
+            if self
+                .collection
+                .update_one(
+                    doc! {"name": &tournament.name},
+                    doc! {"$set": {"active": true}},
+                    None,
+                )
+                .is_err()
+            {
+                return Err(DatabaseError::CouldNotPush);
+            }
+            tracing::info!("Set tournament {} to active", tournament.name);
+        }
+
+        Ok(tournament)
     }
 }
