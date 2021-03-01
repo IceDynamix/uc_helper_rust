@@ -1,3 +1,19 @@
+//! Discord bot side of things
+//!
+//! There will be no documentation on defined functions, only for commands
+//!
+//! # Example
+//!
+//! ```
+//! use uc_helper_rust as uc;
+//!
+//! let db = uc::database::connect().expect("Failed to connect to database");
+//! let mut bot = uc::discord::new_client(db).await;
+//!     if let Err(why) = bot.start().await {
+//!     println!("Client error: {:?}", why);
+//! }
+//! ```
+
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -119,7 +135,7 @@ pub async fn get_database(ctx: &Context) -> Arc<LocalDatabase> {
     let data_read = ctx.data.read().await;
     data_read
         .get::<LocalDatabase>()
-        .expect("Expected database in Typemap")
+        .expect("Expected database in TypeMap")
         .clone()
 }
 
@@ -206,15 +222,10 @@ pub mod util {
         if let Some(player) = &entry.tetrio_data {
             e.title(&player.username);
             e.url(format!("https://ch.tetr.io/u/{}", player._id));
-
             let league = &player.league;
-
             let rank = crate::tetrio::Rank::from_str(&league.rank).unwrap();
-
             e.color(u64::from_str_radix(rank.to_color(), 16).unwrap_or(0));
-
             e.thumbnail(rank.to_img_url());
-
             e.fields(vec![
                 (
                     "Tetra Rating",

@@ -1,3 +1,16 @@
+//! Wrapper for the player collection and methods that can be used to modify the collection
+//!
+//! Usually contains all ranked players because [`PlayerCollection::update_from_leaderboard()`]
+//! adds an entry, even if they are not related to the Underdogs Cup.
+//!
+//! # Example
+//!
+//! ```
+//! let db = uc_helper_rust::database::connect()?;
+//! let player = db.players.get_player_by_tetrio("icedynamix")?;
+//! db.players.update_from_leaderboard()?;
+//! ```
+
 use bson::{doc, DateTime, Document};
 use chrono::{Duration, TimeZone, Utc};
 use mongodb::sync::{Collection, Database};
@@ -8,19 +21,30 @@ use crate::tetrio;
 use crate::tetrio::leaderboard::LeaderboardUser;
 use crate::tetrio::CacheData;
 
+/// Collection name to use in the MongoDB database
 const COLLECTION_NAME: &str = "players";
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+/// Represents an entry as it's saved in the collection
+///
+/// `discord_id` and `link_timestamp` are `Some`, when [`PlayerCollection::link()`] is executed successfully
+///
+/// `tetrio_data` and `cache_data` are the fields used to cache responses from the API
 pub struct PlayerEntry {
+    /// Player's Tetrio ID
     pub tetrio_id: String,
+    /// Player's linked Discord ID
     pub discord_id: Option<u64>,
-    // mongodb cant actually save unsigned integers to their full range but it'll be *fineeeeeeee*
+    /// When the Discord ID was linked
     link_timestamp: Option<DateTime>,
+    /// The cached Tetrio API user data
     pub tetrio_data: Option<LeaderboardUser>,
+    /// Cache data about the Tetrio API user data
     pub cache_data: Option<CacheData>,
 }
 
 impl PlayerEntry {
+    /// Creates a new user
     pub fn new(tetrio_id: &str, discord_id: Option<u64>) -> PlayerEntry {
         PlayerEntry {
             tetrio_id: tetrio_id.to_string(),
@@ -31,12 +55,16 @@ impl PlayerEntry {
         }
     }
 
+    /// Parse a [`bson::Document`] to [`PlayerEntry`]
     pub fn from_document(doc: Document) -> PlayerEntry {
         bson::from_document(doc).expect("bad entry")
     }
 
-    // Returns true if not cached or cached for longer than 10 minutes
-    // We can't simply use cache.cached_until, since leaderboard data is cached for 1h, while regular user data is cached for 1min
+    /// Whether the data is considered cached (saved for less than 10 minutes)
+    ///
+    /// Using [`PlayerEntry::cache_data.cached_until`](`crate::tetrio::CacheData`) is not an option, since the amount
+    /// of time that Tetrio caches the data server side for is different between endpoints
+    /// (compare user endpoint 1min vs leaderboard endpoint 1h).
     pub fn is_cached(&self) -> bool {
         let cache_timeout = Duration::minutes(10);
 
@@ -54,20 +82,25 @@ impl PlayerEntry {
     }
 }
 
+/// Main wrapper for a MongoDB collection to manage players
 pub struct PlayerCollection {
     collection: Collection,
 }
 
 impl PlayerCollection {
+    /// Constructs the wrapper struct for the MongoDB collection
+    ///
+    /// If the collection does not exist, then it will be created implicitly when a new entry is added.
     pub fn new(database: &Database) -> PlayerCollection {
         PlayerCollection {
             collection: database.collection(COLLECTION_NAME),
         }
     }
 
-    // Update a player with API data with respect to cached data
-    // Implicitly adds a new player if they don't already exist, no add function required
-    // The only situation a user doesn't already exist is when they are unranked or got ranked before the hourly leaderboard update hit
+    /// Update a player with API data with respect to cached data
+    ///
+    /// Implicitly adds a new player if they don't already exist, no "add" function required.
+    /// This usually only happens when the player is unranked.
     pub fn update_player(&self, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         tracing::info!("Updating {}", tetrio_id);
         let previous_entry = self.get_player_by_tetrio(tetrio_id)?;
@@ -85,8 +118,10 @@ impl PlayerCollection {
         }
     }
 
-    // Writes the updated data to the database
-    // Doesnt do any requesting or cache checking, and should thus only be used internally
+    /// Writes the updated player data to the collection
+    ///
+    /// Doesn't do any requesting or cache checking, and should thus only be used internally.
+    /// You're looking for [`update_player()`] or [`update_from_leaderboard()`] instead.
     fn update(
         &self,
         new_data: LeaderboardUser,
@@ -122,8 +157,16 @@ impl PlayerCollection {
         Ok(self.get_player_by_tetrio(&new_data._id)?.unwrap())
     }
 
-    // Uses leaderboard data to write to the database so only a single request is used
-    // We don't care about cache timeouts here since whats grabbed with that one request is already grabbed, might as well put it in, right?
+    /// Uses the Tetrio leaderboard endpoint to update all currently ranked players
+    ///
+    /// Relatively efficient, since it only uses a single request to the Tetrio API.
+    /// Cache timeouts are ignored here, since what has been requested with the
+    /// single request is already requested, so there is no harm in updating it anyway.
+    ///
+    /// New ranked players will be added and currently ranked players will be updated.
+    /// Currently unranked players will not be updated.
+    ///
+    /// Can take a few minutes to update
     pub fn update_from_leaderboard(&self) -> DatabaseResult<()> {
         tracing::info!("Started updating via leaderboard");
         let response = tetrio::leaderboard::request().map_err(DatabaseError::TetrioApiError)?;
@@ -135,6 +178,11 @@ impl PlayerCollection {
         Ok(())
     }
 
+    /// Creates a link between a Discord user ID and a Tetrio user
+    ///
+    /// Adds the [`PlayerEntry.discord_id`](PlayerEntry) field.
+    ///
+    /// Performs duplicate checks to make sure that keys cannot be added in incorrect ways.
     pub fn link(&self, discord_id: u64, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         tracing::info!("Linking {} to {}", tetrio_id, discord_id);
         if let Some(entry) = self.get_player_by_discord(discord_id)? {
@@ -163,6 +211,11 @@ impl PlayerCollection {
         Ok(self.get_player_by_discord(discord_id)?.unwrap())
     }
 
+    /// Undoes the link made by [`PlayerCollection.link()`]
+    ///
+    /// Performs the search via a document filter, should only be used internally.
+    /// You're probably looking for [`PlayerCollection.unlink_by_discord()`] or
+    /// [`PlayerCollection.unlink_by_tetrio()`] instead.
     fn unlink(&self, filter: Document) -> DatabaseResult<()> {
         self.collection
             .update_one(
@@ -174,14 +227,7 @@ impl PlayerCollection {
         Ok(())
     }
 
-    pub fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<()> {
-        if self.get_player_by_discord(discord_id)?.is_some() {
-            self.unlink(doc! {"discord_id": discord_id})
-        } else {
-            Err(DatabaseError::NotFound)
-        }
-    }
-
+    /// Undoes the link made by [`PlayerCollection.link()`] for a specified Tetrio user
     pub fn unlink_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<()> {
         if let Some(entry) = self.get_player_by_tetrio(tetrio_id)? {
             if entry.discord_id.is_none() {
@@ -194,6 +240,16 @@ impl PlayerCollection {
         }
     }
 
+    /// Undoes the link made by [`PlayerCollection.link()`] for a specified Discord user ID
+    pub fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<()> {
+        if self.get_player_by_discord(discord_id)?.is_some() {
+            self.unlink(doc! {"discord_id": discord_id})
+        } else {
+            Err(DatabaseError::NotFound)
+        }
+    }
+
+    /// Gets current player data for a specified Tetrio user
     pub fn get_player_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<Option<PlayerEntry>> {
         crate::database::get_entry(
             &self.collection,
@@ -201,10 +257,12 @@ impl PlayerCollection {
         )
     }
 
+    /// Gets current player data for the Tetrio user linked with the specified Discord user ID
     pub fn get_player_by_discord(&self, discord_id: u64) -> DatabaseResult<Option<PlayerEntry>> {
         crate::database::get_entry(&self.collection, doc! {"discord_id": discord_id})
     }
 
+    /// Gets a list of players specified by a document filter
     pub fn get_players(
         &self,
         filter: impl Into<Option<Document>>,
@@ -212,6 +270,9 @@ impl PlayerCollection {
         crate::database::get_entries(&self.collection, filter)
     }
 
+    /// Removes players matching a filter from the collection
+    ///
+    /// Should be used very rarely, since there is no real need to remove any entries.
     pub fn remove_players(&self, filter: Document) -> DatabaseResult<()> {
         tracing::info!("Deleting players with filter {:?}", filter);
         match self.collection.delete_many(filter, None) {
@@ -220,6 +281,9 @@ impl PlayerCollection {
         }
     }
 
+    /// Wipes all entries from the collection
+    ///
+    /// Created for testing purposes, don't actually use this on a live database please
     pub fn remove_all(&self) -> DatabaseResult<()> {
         tracing::info!("Deleting the entire collection for some reason??");
         match self.collection.drop(None) {
