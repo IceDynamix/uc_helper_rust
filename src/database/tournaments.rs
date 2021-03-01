@@ -15,9 +15,8 @@
 //! db.players.update_from_leaderboard()?;
 //!
 //! // Create a tournament
-//! let dates = tournaments::TournamentDates::default();
 //! let restrictions = tournaments::TournamentRestrictions::default();
-//! let tournament = db.tournaments.create_tournament("Test Tournament 1", "TT1", dates, restrictions)?;
+//! let tournament = db.tournaments.create_tournament("Test Tournament 1", "TT1", restrictions)?;
 //!
 //! // Set tournament as active
 //! db.tournaments.set_active(Some(&tournament.shorthand))?; // Using None would set all tournaments to inactive
@@ -105,41 +104,9 @@ pub enum RegistrationError {
     #[error("User is not registered")]
     /// User is not registered (used when unregistering)
     NotRegistered,
-}
-
-#[allow(missing_docs)]
-#[derive(Deserialize, Serialize, Debug)]
-/// Contains relevant tournament dates
-///
-/// TODO: probably redo this concept, so I won't add docs for now
-pub struct TournamentDates {
-    pub announcement_at: BsonDateTime,
-    pub registration_end: BsonDateTime,
-    pub check_in_start: BsonDateTime,
-    pub check_in_end: BsonDateTime,
-}
-
-impl TournamentDates {
-    #[allow(missing_docs)]
-    pub fn new(
-        announcement_at: DateTime<Utc>,
-        registration_end: DateTime<Utc>,
-        check_in_start: DateTime<Utc>,
-        check_in_end: DateTime<Utc>,
-    ) -> TournamentDates {
-        TournamentDates {
-            announcement_at: BsonDateTime::from(announcement_at),
-            registration_end: BsonDateTime::from(registration_end),
-            check_in_start: BsonDateTime::from(check_in_start),
-            check_in_end: BsonDateTime::from(check_in_end),
-        }
-    }
-}
-
-impl Default for TournamentDates {
-    fn default() -> Self {
-        TournamentDates::new(Utc::now(), Utc::now(), Utc::now(), Utc::now())
-    }
+    #[error("Player stat snapshot is missing")]
+    /// Snapshot is missing
+    SnapshotMissing,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -200,14 +167,14 @@ pub struct TournamentEntry {
     pub shorthand: String,
     /// When the tournament entry was created
     created_at: BsonDateTime,
-    /// Relevant dates for the tournament
-    pub dates: TournamentDates,
     /// Tournament registration restrictions
     pub restrictions: TournamentRestrictions,
     /// List of registrations
     pub registered_players: Vec<RegistrationEntry>,
     /// Snapshot of stats to use for checking announcement stats (refer to [`TournamentCollection::add_snapshot()`])
     player_stats_snapshot: Vec<LeaderboardUser>,
+    /// When the snapshot was made
+    snapshot_at: Option<BsonDateTime>,
     /// Whether the tournament is active right now
     active: bool,
 }
@@ -217,17 +184,16 @@ impl TournamentEntry {
     pub fn new(
         name: &str,
         shorthand: &str,
-        dates: TournamentDates,
         restrictions: TournamentRestrictions,
     ) -> TournamentEntry {
         TournamentEntry {
             name: name.to_string(),
             shorthand: shorthand.to_string(),
             created_at: BsonDateTime::from(Utc::now()),
-            dates,
             restrictions,
             registered_players: Vec::new(),
             player_stats_snapshot: Vec::new(),
+            snapshot_at: None,
             active: false,
         }
     }
@@ -237,22 +203,25 @@ impl TournamentEntry {
     /// Uses snapshot data, so [`TournamentCollection::add_snapshot()`] must have been called at least
     /// once before.
     fn check_player_stats(&self, current_data: &LeaderboardUser) -> RegistrationResult {
+        let snapshot_at = match self.snapshot_at {
+            None => return Err(RegistrationError::SnapshotMissing),
+            Some(ts) => *ts,
+        };
+
         let snapshot_data = self
             .player_stats_snapshot
             .iter()
             .find(|u| current_data._id == u._id);
 
-        let announcement: DateTime<Utc> = *self.dates.announcement_at;
-
         match snapshot_data {
-            None => Err(RegistrationError::UnrankedOnAnnouncementDay(announcement)),
+            None => Err(RegistrationError::UnrankedOnAnnouncementDay(snapshot_at)),
             Some(snap) => {
                 let announce_rank = Rank::from_str(&snap.league.rank).unwrap();
                 if announce_rank > self.restrictions.max_rank {
                     return Err(RegistrationError::AnnouncementRankTooHigh {
                         rank: announce_rank,
                         expected: self.restrictions.max_rank,
-                        date: announcement,
+                        date: snapshot_at,
                     });
                 }
 
@@ -261,7 +230,7 @@ impl TournamentEntry {
                     return Err(RegistrationError::NotEnoughGames {
                         value: games_played,
                         expected: self.restrictions.min_ranked_games,
-                        date: announcement,
+                        date: snapshot_at,
                     });
                 }
 
@@ -270,7 +239,7 @@ impl TournamentEntry {
                     return Err(RegistrationError::RdTooHigh {
                         value: rd,
                         expected: self.restrictions.max_rd,
-                        date: announcement,
+                        date: snapshot_at,
                     });
                 }
 
@@ -308,11 +277,10 @@ impl TournamentCollection {
         &self,
         name: &str,
         shorthand: &str,
-        dates: TournamentDates,
         restrictions: TournamentRestrictions,
     ) -> DatabaseResult<TournamentEntry> {
         tracing::info!("Creating tournament {} ({})", name, shorthand);
-        let entry = TournamentEntry::new(name, shorthand, dates, restrictions);
+        let entry = TournamentEntry::new(name, shorthand, restrictions);
         match self.collection.insert_one(
             bson::to_document(&entry).expect("could not convert to document"),
             None,
@@ -487,10 +455,11 @@ impl TournamentCollection {
     /// It's around 4MB in size (as measured in March 2021), so hitting a size
     /// limit with MongoDB Atlas (512MB min.) is unlikely, unless hundreds of snapshots are saved.
     pub fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
-        tracing::info!("Adding stat snapshot for tournament {}", name);
         if self.get_tournament(name)?.is_none() {
             return Err(DatabaseError::NotFound);
         }
+
+        tracing::info!("Adding stat snapshot for tournament {}", name);
 
         // Will ensure that unranked players are not in the snapshot and are therefore easy to identify,
         // since the players collection doesnt remove them when they become unranked
@@ -504,7 +473,7 @@ impl TournamentCollection {
 
         match self.collection.update_one(
             doc! {"$or":[{"name": name}, {"shorthand": name}]},
-            doc! {"$set": {"player_stats_snapshot": &snapshot}},
+            doc! {"$set": {"player_stats_snapshot": &snapshot, "snapshot_at": Utc::now()}},
             None,
         ) {
             Ok(_) => Ok(()),
