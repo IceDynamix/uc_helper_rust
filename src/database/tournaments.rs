@@ -1,3 +1,28 @@
+//! Wrapper for the tournament collection and methods that can be used to modify the collection
+//!
+//! There will only be one active tournament at a time, unless the database is edited by hand.
+//!
+//! # Example
+//!
+//! ```
+//! use uc_helper_rust::database::tournaments;
+//! use chrono::{DateTime, Utc, Duration};
+//! use uc_helper_rust::tetrio::Rank;
+//!
+//! let db = uc_helper_rust::database::connect()?;
+//!
+//! // Update all ranked players
+//! db.players.update_from_leaderboard()?;
+//!
+//! // Create a tournament
+//! let dates = tournaments::TournamentDates::default();
+//! let restrictions = tournaments::TournamentRestrictions::default();
+//! let tournament = db.tournaments.create_tournament("Test Tournament 1", "TT1", dates, restrictions)?;
+//!
+//! // Set tournament as active
+//! db.tournaments.set_active(Some(&tournament.shorthand))?; // Using None would set all tournaments to inactive
+//! ```
+
 use std::str::FromStr;
 
 use bson::{doc, DateTime as BsonDateTime, Document};
@@ -16,6 +41,9 @@ const COLLECTION_NAME: &str = "tournaments";
 type RegistrationResult = Result<(), RegistrationError>;
 
 #[derive(Error, Debug)]
+/// Something that prevents a registration attempt from succeeding
+///
+/// Contains all relevant information to create a meaningful error message
 pub enum RegistrationError {
     #[error("Current rank is too high (currently `{rank}`, ≤ `{expected}` required)")]
     CurrentRankTooHigh { rank: Rank, expected: Rank },
@@ -56,6 +84,7 @@ pub enum RegistrationError {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+/// Contains relevant tournament dates
 pub struct TournamentDates {
     pub announcement_at: BsonDateTime,
     pub registration_end: BsonDateTime,
@@ -79,24 +108,38 @@ impl TournamentDates {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct TournamentRestrictions {
-    pub min_ranked_games: i64,
-    pub max_rd: f64,
-    pub max_rank: Rank,
-}
-
-impl TournamentRestrictions {
-    pub fn new(min_ranked_games: i64, max_rd: f64, max_rank: Rank) -> TournamentRestrictions {
-        TournamentRestrictions {
-            min_ranked_games,
-            max_rd,
-            max_rank,
-        }
+impl Default for TournamentDates {
+    fn default() -> Self {
+        TournamentDates::new(Utc::now(), Utc::now(), Utc::now(), Utc::now())
     }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+/// Contains tournament registration restrictions
+pub struct TournamentRestrictions {
+    pub max_rank: Rank,
+    pub max_rd: f64,
+    pub min_ranked_games: i64,
+}
+
+impl TournamentRestrictions {
+    pub fn new(max_rank: Rank, max_rd: f64, min_ranked_games: i64) -> TournamentRestrictions {
+        TournamentRestrictions {
+            max_rank,
+            max_rd,
+            min_ranked_games,
+        }
+    }
+}
+
+impl Default for TournamentRestrictions {
+    fn default() -> Self {
+        TournamentRestrictions::new(Rank::Unranked, 999f64, 0)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+/// Represents a registration in a tournament entry
 pub struct RegistrationEntry {
     date: BsonDateTime,
     tetrio_id: String,
@@ -112,6 +155,7 @@ impl RegistrationEntry {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+/// Represents an entry as it's saved in the collection
 pub struct TournamentEntry {
     pub name: String,
     pub shorthand: String,
@@ -142,6 +186,10 @@ impl TournamentEntry {
         }
     }
 
+    /// Verify whether a player can participate in this tournament
+    ///
+    /// Uses snapshot data, so [`TournamentCollection::add_snapshot()`] must have been called at least
+    /// once before.
     fn check_player_stats(&self, current_data: &LeaderboardUser) -> RegistrationResult {
         let snapshot_data = self
             .player_stats_snapshot
@@ -194,17 +242,22 @@ impl TournamentEntry {
     }
 }
 
+/// Main wrapper for a MongoDB collection to manage tournaments
 pub struct TournamentCollection {
     collection: Collection,
 }
 
 impl TournamentCollection {
+    /// Constructs the wrapper struct for the MongoDB collection
+    ///
+    /// If the collection does not exist, then it will be created implicitly when a new entry is added.
     pub fn new(database: &Database) -> TournamentCollection {
         TournamentCollection {
             collection: database.collection(COLLECTION_NAME),
         }
     }
 
+    /// Create a tournament entry with specified information
     pub fn create_tournament(
         &self,
         name: &str,
@@ -223,6 +276,7 @@ impl TournamentCollection {
         }
     }
 
+    /// Gets a tournament by name or shorthand
     pub fn get_tournament(&self, name: &str) -> DatabaseResult<Option<TournamentEntry>> {
         crate::database::get_entry(
             &self.collection,
@@ -230,6 +284,10 @@ impl TournamentCollection {
         )
     }
 
+    /// Registers a player to the active tournament
+    ///
+    /// Will call [`PlayerCollection::link()`] internally, so the player is always linked.
+    /// If no username is given, then it will try to use the linked player.
     pub fn register_to_active(
         &self,
         players: &PlayerCollection,
@@ -243,8 +301,8 @@ impl TournamentCollection {
             }
         };
 
-        // use the linked player if no username is provided
-        // link already takes care of the cases where tetrio id or discord id do not match
+        // Use the linked player if no username is provided
+        // Link already takes care of the cases where tetrio id or discord id do not match
         let player = match tetrio_id {
             None => match players.get_player_by_discord(discord_id)? {
                 Some(linked_entry) => linked_entry,
@@ -298,6 +356,10 @@ impl TournamentCollection {
         Ok(players.get_player_by_discord(discord_id)?.unwrap())
     }
 
+    /// Unregisters a player from the current tournament
+    ///
+    /// Function to be used internally, you're probably looking for
+    /// [`unregister_by_tetrio()`] or [`unregister_by_discord()`]
     fn unregister(&self, player: &PlayerEntry, tournament: &TournamentEntry) -> RegistrationResult {
         if tournament
             .registered_players
@@ -331,26 +393,7 @@ impl TournamentCollection {
         Ok(())
     }
 
-    pub fn unregister_by_discord(
-        &self,
-        players: &PlayerCollection,
-        discord_id: u64,
-    ) -> RegistrationResult {
-        let tournament = match self.get_active()? {
-            Some(t) => t,
-            None => {
-                return Err(RegistrationError::NoTournamentActive);
-            }
-        };
-
-        let specified = match players.get_player_by_discord(discord_id)? {
-            Some(p) => p,
-            None => return Err(RegistrationError::DatabaseError(DatabaseError::NotFound)),
-        };
-
-        self.unregister(&specified, &tournament)
-    }
-
+    /// Unregisters a player specified by username or ID from the active tournament
     pub fn unregister_by_tetrio(
         &self,
         players: &PlayerCollection,
@@ -371,6 +414,32 @@ impl TournamentCollection {
         self.unregister(&specified, &tournament)
     }
 
+    /// Unregisters a player specified by Discord ID from the active tournament
+    pub fn unregister_by_discord(
+        &self,
+        players: &PlayerCollection,
+        discord_id: u64,
+    ) -> RegistrationResult {
+        let tournament = match self.get_active()? {
+            Some(t) => t,
+            None => {
+                return Err(RegistrationError::NoTournamentActive);
+            }
+        };
+
+        let specified = match players.get_player_by_discord(discord_id)? {
+            Some(p) => p,
+            None => return Err(RegistrationError::DatabaseError(DatabaseError::NotFound)),
+        };
+
+        self.unregister(&specified, &tournament)
+    }
+
+    /// Adds a stat snapshot of the current leaderboard entry to a specified tournament
+    ///
+    /// This data is used to compare announcement stats when registering.
+    /// It's around 4MB in size (as measured in March 2021), so hitting a size
+    /// limit with MongoDB Atlas (512MB min.) is unlikely, unless hundreds of snapshots are saved.
     pub fn add_snapshot(&self, name: &str) -> DatabaseResult<()> {
         tracing::info!("Adding stat snapshot for tournament {}", name);
         if self.get_tournament(name)?.is_none() {
@@ -397,6 +466,9 @@ impl TournamentCollection {
         }
     }
 
+    /// Set a specified tournament as active
+    ///
+    /// If `None` is passed, then it will set all tournaments as inactive.
     pub fn set_active(&self, name: Option<&str>) -> DatabaseResult<Option<TournamentEntry>> {
         let tournament = if let Some(name) = name {
             match self.get_tournament(name)? {
@@ -437,6 +509,7 @@ impl TournamentCollection {
         Ok(tournament)
     }
 
+    /// Get the currently active tournament
     pub fn get_active(&self) -> DatabaseResult<Option<TournamentEntry>> {
         crate::database::get_entry(&self.collection, doc! {"active": true})
     }
