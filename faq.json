@@ -1,0 +1,22 @@
+{
+  "apm": {
+    "title": "Attack per minute",
+    "description": "APM stands for **Attack per minute** and refers to how quickly you are sending garbage lines during a match. One garbage line sent is considered one attack. The stat is displayed in-game and in Tetra Channel, and is the average of your last 10 ranked games."
+  },
+  "app": {
+    "title": "Attack per piece",
+    "description": "APM stands for **Attack per piece** and refers to how efficiently you are sending garbage during a match. This stat is not shown in-game and has to be calculated manually. You can get this number by calculating `APP = APM / ( PPS * 60 )`."
+  },
+  "pps": {
+    "title": "Pieces per second",
+    "description": "PPS stands for **Pieces per second** and refers to how quickly you can place blocks. The stat displayed in-game and in Tetra Channel is the average of your last 10 ranked games."
+  },
+  "rd": {
+    "title": "Rating Deviation",
+    "description": "RD stands for **Rating Deviation** and represents the system's confidence in your current Tetra League rating, with lower being better. You can find this number on any profile on Tetra Channel, behind the '±' of your Glicko rating.\n\nThe number increases over time, and decreases as you play. If your RD is above 100, then you will be considered unranked."
+  },
+  "vs": {
+    "title": "Versus Score",
+    "description": "VS stands for **Versus Score** and is an indicator of how well you are performing during a match. It's used in parallel to APM and PPS and it aims to be a metric that balances both mentioned stats. It is calculated as following:\n\n> `VS = [ ( lines sent + garbage cleared ) / pieces ] * PPS * 100`\n\nThis stat is used as the basis for bracket seeding in Underdogs Cup tournaments."
+  }
+}

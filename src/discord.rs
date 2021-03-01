@@ -36,7 +36,7 @@ struct Owner;
 struct Staff;
 
 #[group]
-#[commands(stats, link, unlink)]
+#[commands(faq, stats, link, unlink)]
 #[description("Tetr.io player related commands")]
 struct Player;
 

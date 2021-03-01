@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -132,6 +133,60 @@ async fn unlink(ctx: &Context, msg: &Message) -> CommandResult {
     // TODO: unregister if registered
 
     delay_delete(&ctx, reply).await?;
+
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct FaqEntry {
+    title: String,
+    description: String,
+}
+
+const FAQ_FILE_PATH: &str = "./faq.json";
+lazy_static! {
+    static ref FAQ_ENTRIES: std::collections::HashMap<String, FaqEntry> = {
+        let read_file = std::fs::File::open(FAQ_FILE_PATH).expect("file not there");
+        let reader = std::io::BufReader::new(&read_file);
+        serde_json::from_reader(reader).expect("bad json")
+    };
+}
+
+#[command]
+#[usage("[query]")]
+#[example("apm")]
+#[example("pps")]
+/// Answers frequently asked questions regarding Tetrio and UC
+///
+/// Run without any arguments to view all available entries.
+async fn faq(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    if let Some(arg) = args.current() {
+        if let Some(entry) = FAQ_ENTRIES.get(&*arg.to_lowercase()) {
+            msg.channel_id
+                .send_message(&ctx.http, |m| {
+                    m.embed(|e| e.title(&entry.title).description(&entry.description))
+                })
+                .await?;
+            return Ok(());
+        }
+    }
+
+    // entry not found or no query passed
+
+    let mut keys: Vec<String> = FAQ_ENTRIES.keys().cloned().collect();
+    keys.sort();
+
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.title("Frequently Asked Questions").field(
+                    "Available queries",
+                    keys.join(", "),
+                    false,
+                )
+            })
+        })
+        .await?;
 
     Ok(())
 }

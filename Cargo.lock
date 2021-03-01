@@ -2482,18 +2482,19 @@ checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
 name = "uc_helper_rust"
 version = "0.2.0"
 dependencies = [
- "bson",
- "chrono",
- "dotenv",
- "mongodb",
- "reqwest",
- "serde",
- "serde_json",
- "serenity",
- "thiserror",
- "tokio 1.2.0",
- "tracing",
- "tracing-subscriber",
+    "bson",
+    "chrono",
+    "dotenv",
+    "lazy_static",
+    "mongodb",
+    "reqwest",
+    "serde",
+    "serde_json",
+    "serenity",
+    "thiserror",
+    "tokio 1.2.0",
+    "tracing",
+    "tracing-subscriber",
 ]
 
 [[package]]
