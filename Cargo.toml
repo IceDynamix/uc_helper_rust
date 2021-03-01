@@ -1,23 +1,27 @@
 [package]
 name = "uc_helper_rust"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["IceDynamix <22303902+IceDynamix@users.noreply.github.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1.0"
+
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+reqwest = { version = "0.11.1", features = ["blocking", "json"] }
 
-reqwest = {version = "0.10.9", features = ["json"]}
-# version required for reqwest
-tokio = {version = "0.2", features = ["signal"]}
+mongodb = { version = "1.1.1", default-features = false, features = ["sync"] }
+bson = { version = "1.2.0", features = ["u2i"] } # implicitly converts unsigned to signed ints when pushing to mongo
+chrono = "0.4.19"
 
-serenity = "0.9.2"
+# serenity needs 1.x but mongodb needs 0.2 if used async... so i guess i'm using mongodb without async??
+tokio = { version = "1.0", features = ["rt-multi-thread", "signal"] } # signal is used for ctrl+c
+
+serenity = "0.10.2"
 dotenv = "0.15.0"
 tracing = "0.1.22"
 tracing-subscriber = "0.2.15"
 
-mongodb = "1.1.1"
-chrono = "0.4.19"
