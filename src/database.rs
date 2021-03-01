@@ -11,6 +11,8 @@
 //! let tournament = db.tournaments.get_tournament("UC7")?;
 //! ```
 
+#![warn(missing_docs)]
+
 use std::env;
 use std::sync::Arc;
 
@@ -66,29 +68,40 @@ fn get_entries<T: DeserializeOwned>(
 /// Something that can go wrong during database access
 pub enum DatabaseError {
     #[error("Connection to database failed")]
+    /// Connection to database could not be established
     ConnectionFailed,
     #[error("Could not find item")]
+    /// Some item was not present in the database
     NotFound,
     #[error("Could not push to database")]
+    /// Pushing an update to the database was not possible
     CouldNotPush,
     #[error("Tetrio user already exists")]
+    /// A Tetrio user is already in the database
     DuplicateTetrioEntry,
     #[error("Discord user already exists")]
+    /// A Discord user is already in the database
     DuplicateDiscordEntry,
     #[error("Could not parse document to entry: {0}")]
+    /// Could not parse document to entry
     CouldNotParse(String),
     #[error("A specific field was not set")]
+    /// A document field was not set
     FieldNotSet,
     #[error("Something happened while requesting data from the Tetrio API")]
+    /// Tetrio API Error
     TetrioApiError(#[from] TetrioApiError),
     #[error("User is trying to link user that's already linked to them")]
+    /// User is trying to link themself to the same person
     AlreadyLinked,
 }
 
 /// Represents the database and provides access to the wrapped collections
 pub struct LocalDatabase {
     _database: Database,
+    /// Represents the player collection
     pub players: PlayerCollection,
+    /// Represents the tournament collection
     pub tournaments: TournamentCollection,
 }
 

@@ -9,8 +9,9 @@ use crate::tetrio::TetrioResponse;
 /// Endpoint url, relative to the base URL
 const ENDPOINT: &str = "users/lists/league/all";
 
+#[allow(missing_docs)]
 #[derive(Deserialize, Serialize, Debug, Clone)]
-/// League specific data
+/// This user's current TETRA LEAGUE standing
 ///
 /// Defined in detail in the Tetrio API [Tetrio API](https://tetr.io/about/api/#userlistsleagueall)
 ///
@@ -27,12 +28,12 @@ pub struct LeagueData {
     pub vs: Option<f64>,
 }
 
+#[allow(missing_docs)]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 /// User data as contained in [`LeaderboardData`]
 ///
 /// Defined in detail in the Tetrio API [Tetrio API](https://tetr.io/about/api/#userlistsleagueall)
 ///
-/// Country and supporter are Options, as users who registered before country or supporter status was tracked don't contain the value.
 /// This is a lighter version of the full user object, returned by [`/users/:user`](https://tetr.io/about/api/#usersuser).
 pub struct LeaderboardUser {
     pub _id: String,
@@ -47,6 +48,7 @@ pub struct LeaderboardUser {
 #[derive(Deserialize, Serialize, Debug)]
 /// Data structure of response data
 pub struct LeaderboardData {
+    /// Requested leaderboard data
     pub users: Vec<LeaderboardUser>,
 }
 

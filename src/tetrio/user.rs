@@ -16,6 +16,7 @@ const ENDPOINT: &str = "users";
 /// Uses [`super::leaderboard::LeaderboardUser`], since it's a lighter version of the
 /// regular user struct and the extra information is not necessary.
 pub struct UserData {
+    /// Requested user
     pub user: LeaderboardUser,
 }
 

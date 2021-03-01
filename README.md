@@ -30,6 +30,9 @@ Make sure Rust is installed and set to stable release. Start the Discord bot wit
 Not that I expect anyone to contribute to this, but just in case:
 
 - Use [Clippy]
+- Add documentation when working in `database` and `tetrio` modules
+
+Open local documentation with `cargo docs --open`
 
 That's about it thanks
 

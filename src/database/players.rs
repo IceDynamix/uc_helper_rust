@@ -31,14 +31,20 @@ const COLLECTION_NAME: &str = "players";
 ///
 /// `tetrio_data` and `cache_data` are the fields used to cache responses from the API
 pub struct PlayerEntry {
+    /// Player's Tetrio ID
     pub tetrio_id: String,
+    /// Player's linked Discord ID
     pub discord_id: Option<u64>,
+    /// When the Discord ID was linked
     link_timestamp: Option<DateTime>,
+    /// The cached Tetrio API user data
     pub tetrio_data: Option<LeaderboardUser>,
+    /// Cache data about the Tetrio API user data
     pub cache_data: Option<CacheData>,
 }
 
 impl PlayerEntry {
+    /// Creates a new user
     pub fn new(tetrio_id: &str, discord_id: Option<u64>) -> PlayerEntry {
         PlayerEntry {
             tetrio_id: tetrio_id.to_string(),

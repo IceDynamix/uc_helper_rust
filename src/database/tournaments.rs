@@ -46,45 +46,72 @@ type RegistrationResult = Result<(), RegistrationError>;
 /// Contains all relevant information to create a meaningful error message
 pub enum RegistrationError {
     #[error("Current rank is too high (currently `{rank}`, ≤ `{expected}` required)")]
-    CurrentRankTooHigh { rank: Rank, expected: Rank },
+    /// User's current rank is outside of the restrictions
+    CurrentRankTooHigh {
+        /// Current rank
+        rank: Rank,
+        /// Required rank
+        expected: Rank,
+    },
     #[error(
         "Rank was too high on announcement day (was `{rank}` by `{date}`, ≤ `{expected}` required)"
     )]
+    /// User's announcement rank was outside of the restrictions
     AnnouncementRankTooHigh {
+        /// Annoucement rank
         rank: Rank,
+        /// Required rank
         expected: Rank,
+        /// Announcement date
         date: DateTime<Utc>,
     },
     #[error("Not enough ranked games played until announcement day (was `{value}` by `{date}`, ≥ `{expected}` required)")]
+    /// User's ranked game count is outside of the restrictions
     NotEnoughGames {
+        /// Current value
         value: i64,
+        /// Expected value
         expected: i64,
+        /// Announcement date
         date: DateTime<Utc>,
     },
     #[error(
         "RD was too high at announcement day (was `{value}` by `{date}`, ≥ `{expected}` required)"
     )]
+    /// User's rating deviation is outside of the restrictions
     RdTooHigh {
+        /// Current value
         value: f64,
+        /// Expected value
         expected: f64,
+        /// Announcement date
         date: DateTime<Utc>,
     },
     #[error("Player was unranked on announcement day (`{0}`)")]
+    /// User was unranked on announcement day
     UnrankedOnAnnouncementDay(DateTime<Utc>),
     #[error("There is no tournament ongoing")]
+    /// There is no active tournament
     NoTournamentActive,
     #[error("Something was missing while registering (`{0}`)")]
+    /// Missing information to register the user
     MissingArgument(String),
     #[error("Something went wrong while accessing the database: {0}")]
+    /// Something happened while accessing the database
     DatabaseError(#[from] DatabaseError),
     #[error("User is already registered")]
+    /// User is already registered
     AlreadyRegistered,
     #[error("User is not registered")]
+    /// User is not registered (used when unregistering)
     NotRegistered,
 }
 
+#[allow(missing_docs)]
 #[derive(Deserialize, Serialize, Debug)]
 /// Contains relevant tournament dates
+///
+/// TODO: probably redo this concept, so I won't add docs for now
 pub struct TournamentDates {
     pub announcement_at: BsonDateTime,
     pub registration_end: BsonDateTime,
@@ -93,6 +120,7 @@ pub struct TournamentDates {
 }
 
 impl TournamentDates {
+    #[allow(missing_docs)]
     pub fn new(
         announcement_at: DateTime<Utc>,
         registration_end: DateTime<Utc>,
@@ -117,12 +145,18 @@ impl Default for TournamentDates {
 #[derive(Deserialize, Serialize, Debug)]
 /// Contains tournament registration restrictions
 pub struct TournamentRestrictions {
+    /// Highest announcement rank a user is allowed to have in order to register
+    ///
+    /// Current rank will always be `max_rank + 1`
     pub max_rank: Rank,
+    /// Highest rating deviation a user is allowed to have in order to register
     pub max_rd: f64,
+    /// Minimum amount of played ranked games a user needs to have to have in order to register
     pub min_ranked_games: i64,
 }
 
 impl TournamentRestrictions {
+    /// Creates tournament restrictions
     pub fn new(max_rank: Rank, max_rd: f64, min_ranked_games: i64) -> TournamentRestrictions {
         TournamentRestrictions {
             max_rank,
@@ -146,6 +180,7 @@ pub struct RegistrationEntry {
 }
 
 impl RegistrationEntry {
+    /// Creates a new registration entry
     pub fn new(tetrio_id: &str) -> RegistrationEntry {
         RegistrationEntry {
             date: BsonDateTime::from(Utc::now()),
@@ -157,17 +192,28 @@ impl RegistrationEntry {
 #[derive(Deserialize, Serialize, Debug)]
 /// Represents an entry as it's saved in the collection
 pub struct TournamentEntry {
+    /// Name of the tournament, expected to be unique
+    /// TODO: Make sure it is unique
     pub name: String,
+    /// Shorthand or abbreviation of the tournament, expected to be unique
+    /// TODO: Make sure it is unique
     pub shorthand: String,
+    /// When the tournament entry was created
     created_at: BsonDateTime,
+    /// Relevant dates for the tournament
     pub dates: TournamentDates,
+    /// Tournament registration restrictions
     pub restrictions: TournamentRestrictions,
+    /// List of registrations
     pub registered_players: Vec<RegistrationEntry>,
+    /// Snapshot of stats to use for checking announcement stats (refer to [`TournamentCollection::add_snapshot()`])
     player_stats_snapshot: Vec<LeaderboardUser>,
+    /// Whether the tournament is active right now
     active: bool,
 }
 
 impl TournamentEntry {
+    /// Creates a new tournament entry
     pub fn new(
         name: &str,
         shorthand: &str,

@@ -14,11 +14,13 @@
 //! let user = tetrio::user::request("icedynamix")?;
 //! ```
 
+#![warn(missing_docs)]
+
 use std::fmt::Formatter;
 
 use reqwest::blocking::Client;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use thiserror::Error;
 
@@ -32,6 +34,7 @@ const API_URL: &str = "https://ch.tetr.io/api";
 /// Something that can go wrong while requesting from the Tetrio API
 pub enum TetrioApiError {
     #[error("Something happened while requesting from tetrio: {0}")]
+    /// Error returned by the Tetrio API on an unsuccessful request
     Error(String),
 }
 
@@ -54,20 +57,21 @@ pub struct TetrioResponseStruct {
 ///
 /// Cache is not shared between workers. Load balancing may therefore give you unexpected responses.
 /// To use the same worker, pass the same X-Session-ID header for all requests that should use the same cache.
-///
-/// - `status`: Whether the cache was hit. Either "hit", "miss", or "awaited" (resource was already being requested by another client)
-/// - `cached_at`: When this resource was cached. (format: UNIX timestamp * 1000)
-/// - `cached_until`: When this resource's cache expires. (format: UNIX timestamp * 1000)
 pub struct CacheData {
+    /// Whether the cache was hit. Either "hit", "miss", or "awaited" (resource was already being requested by another client)
     pub status: String,
+    /// When this resource was cached. (format: UNIX timestamp * 1000)
     pub cached_at: i64,
+    /// When this resource's cache expires. (format: UNIX timestamp * 1000)
     pub cached_until: i64,
 }
 
 #[derive(Debug)]
 /// Successful API response, without the `success` or `error` field.
 pub struct SuccessfulResponse<T> {
+    /// Requested data
     pub data: T,
+    /// How the data is cached server-side
     pub cache: CacheData,
 }
 
@@ -135,6 +139,7 @@ pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
 /// assert_eq!(Rank::SS, rank + 1);
 /// assert!(Rank::U > rank);
 /// ```
+#[allow(missing_docs)]
 pub enum Rank {
     Unranked,
     D,
