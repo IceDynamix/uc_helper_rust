@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use serenity::client::bridge::gateway::GatewayIntents;
+use serenity::framework::standard::{
+    help_commands,
+    macros::{group, help, hook},
+    Args, CommandGroup, CommandResult, HelpOptions,
+};
+use serenity::http::Http;
+use serenity::model::prelude::*;
 use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
-use serenity::client::bridge::gateway::GatewayIntents;
-use serenity::framework::standard::{
-    Args,
-    CommandGroup,
-    CommandResult, help_commands, HelpOptions, macros::{group, help, hook},
-};
-use serenity::http::Http;
-use serenity::model::prelude::*;
 use tracing::{info, warn};
 
 use crate::commands::{owner::*, player::*, staff::*, tournament::*};
