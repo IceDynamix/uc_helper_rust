@@ -1,7 +1,6 @@
 language: rust
 rust:
   - stable
-  - beta
 before_install:
   - rustup component add clippy
   - rustup component add rustfmt
