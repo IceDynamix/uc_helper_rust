@@ -1,6 +1,18 @@
-/*
-    Optimally, the discord command should never call from this module directly. It should only access the database commands.
-*/
+//! Data classes and functions regarding the Tetrio API.
+//!
+//! All functions are written synchronously, for tokio runtime reasons related to usage in the Discord bot client.  
+//!
+//! Only Leaderboard and User endpoints are implemented for now. There is no caching going on, all of the caching is managed by the database module.
+//! Therefore in the optimal use-case, the [crate::discord] module should never call from this module directly, only the [crate::database] commands.
+//!
+//! # Example
+//!
+//! ```
+//! use uc_helper_rust::tetrio;
+//!
+//! let leaderboard = tetrio::leaderboard::request()?;
+//! let user = tetrio::user::request("icedynamix")?;
+//! ```
 
 use std::fmt::Formatter;
 
@@ -13,16 +25,24 @@ use thiserror::Error;
 pub mod leaderboard;
 pub mod user;
 
+/// The base URL of the Tetrio API
 const API_URL: &str = "https://ch.tetr.io/api";
 
 #[derive(Error, Debug)]
+/// Something that can go wrong while requesting from the Tetrio API
 pub enum TetrioApiError {
     #[error("Something happened while requesting from tetrio: {0}")]
     Error(String),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct TetrioResponseStruct {
+/// Structure of every Tetrio API response
+///
+/// - `success`: Whether the request was successful.
+/// - `cache`: If successful, data about how this request was cached. (on the API's side)
+/// - `data`: If successful, the requested data
+/// - `error`: If unsuccessful, the reason the request failed.
+pub struct TetrioResponseStruct {
     success: bool,
     cache: Option<CacheData>,
     data: Option<Value>,
@@ -30,6 +50,14 @@ struct TetrioResponseStruct {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+/// Information about how data was cached server-side
+///
+/// Cache is not shared between workers. Load balancing may therefore give you unexpected responses.
+/// To use the same worker, pass the same X-Session-ID header for all requests that should use the same cache.
+///
+/// - `status`: Whether the cache was hit. Either "hit", "miss", or "awaited" (resource was already being requested by another client)
+/// - `cached_at`: When this resource was cached. (format: UNIX timestamp * 1000)
+/// - `cached_until`: When this resource's cache expires. (format: UNIX timestamp * 1000)
 pub struct CacheData {
     pub status: String,
     pub cached_at: i64,
@@ -37,13 +65,21 @@ pub struct CacheData {
 }
 
 #[derive(Debug)]
+/// Successful API response, without the `success` or `error` field.
 pub struct SuccessfulResponse<T> {
     pub data: T,
     pub cache: CacheData,
 }
 
+/// Tetrio API response, represented as a Result type
 type TetrioResponse<T> = Result<SuccessfulResponse<T>, TetrioApiError>;
 
+/// General function to request from a Tetrio endpoint.
+///
+/// While this function is public, you should instead call the request functions directly from the data classes defined for each endpoint.
+///
+/// - [`leaderboard::request()`]
+/// - [`user::request()`]
 pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
     tracing::info!("Requesting from endpoint {}", endpoint);
 
@@ -83,6 +119,22 @@ pub fn request<T: DeserializeOwned>(endpoint: &str) -> TetrioResponse<T> {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
+/// A player's league rank
+///
+/// Supports addition of usizes and comparison of ranks
+///
+/// # Example
+///
+/// ```
+/// use uc_helper_rust::tetrio::Rank;
+/// use std::str::FromStr;
+///
+/// let rank = Rank::from_str("s+");
+///
+/// assert_eq!(Rank::SPlus, rank);
+/// assert_eq!(Rank::SS, rank + 1);
+/// assert!(Rank::U > rank);
+/// ```
 pub enum Rank {
     Unranked,
     D,
@@ -105,6 +157,9 @@ pub enum Rank {
 }
 
 impl Rank {
+    /// Returns a string representation, to be used in URLs or similar
+    ///
+    /// You'll want to use the display trait implementation instead most of the time.
     pub fn to_str(&self) -> &'static str {
         match self {
             Rank::D => "d",
@@ -128,6 +183,8 @@ impl Rank {
         }
     }
 
+    //noinspection ALL
+    /// Returns a hex code color (without the #) for the specified rank
     pub fn to_color(&self) -> &'static str {
         match self {
             Rank::Unranked => "828282",
@@ -151,6 +208,9 @@ impl Rank {
         }
     }
 
+    /// Returns the Underdogs Cup Discord Emoji representation
+    ///
+    /// These will, by definition, only work on the Underdogs Cup Discord.
     pub fn to_emoji(&self) -> &'static str {
         match self {
             Rank::X => "<:rank_x:758747882215047169>",
@@ -174,10 +234,12 @@ impl Rank {
         }
     }
 
+    /// Returns an image representation of the rank as an image URL
     pub fn to_img_url(&self) -> String {
         format!("https://tetr.io/res/league-ranks/{}.png", self.to_str())
     }
 
+    /// Returns an iterator, which follows the rank order
     pub fn iter() -> std::slice::Iter<'static, Rank> {
         use Rank::*;
         static RANKS: [Rank; 18] = [
@@ -191,6 +253,7 @@ impl Rank {
 impl std::str::FromStr for Rank {
     type Err = ();
 
+    /// Parses a string into a Rank. Will return `Rank::Unranked` if not parsable
     fn from_str(s: &str) -> Result<Self, ()> {
         let parsed = match s {
             "d" => Rank::D,
@@ -218,6 +281,7 @@ impl std::str::FromStr for Rank {
 }
 
 impl std::fmt::Display for Rank {
+    /// Returns a pretty string representation
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.to_str().to_uppercase().as_str())
     }
