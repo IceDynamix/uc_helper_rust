@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
@@ -111,5 +113,87 @@ async fn unregister(ctx: &Context, msg: &Message) -> CommandResult {
     };
 
     delay_delete(&ctx, reply).await?;
+    Ok(())
+}
+
+#[command]
+#[owners_only]
+async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    match args.current() {
+        None => {
+            msg.channel_id
+                .say(&ctx.http, "Missing argument (tournament)")
+                .await?;
+        }
+        Some(arg) => {
+            let db = crate::discord::get_database(&ctx).await;
+
+            let tournament = match db.tournaments.get_tournament(arg) {
+                Ok(tournament_option) => match tournament_option {
+                    Some(tournament) => tournament,
+                    None => {
+                        react_deny(&ctx, &msg).await;
+                        msg.channel_id
+                            .say(&ctx.http, "Tournament not found")
+                            .await?;
+                        return Ok(());
+                    }
+                },
+                Err(err) => {
+                    react_deny(&ctx, &msg).await;
+                    msg.channel_id.say(&ctx.http, err).await?;
+                    return Ok(());
+                }
+            };
+
+            let mut replies = Vec::new();
+
+            replies.push(
+                msg.channel_id
+                    .say(
+                        &ctx.http,
+                        "Updating all player stats, could take a few minutes...",
+                    )
+                    .await?,
+            );
+
+            let typing = msg.channel_id.start_typing(&ctx.http)?;
+            let update_result = db.players.update_from_leaderboard();
+            typing.stop();
+
+            if let Err(err) = update_result {
+                react_deny(&ctx, &msg).await;
+                msg.channel_id.say(&ctx.http, err).await?;
+                return Ok(());
+            }
+
+            replies.push(
+                msg.channel_id
+                    .say(&ctx.http, "Finished updating all players")
+                    .await?,
+            );
+
+            replies.push(
+                msg.channel_id
+                    .say(&ctx.http, "Creating snapshot...")
+                    .await?,
+            );
+
+            match db.tournaments.add_snapshot(&tournament.shorthand) {
+                Ok(_) => {
+                    react_confirm(&ctx, &msg).await;
+                    tokio::time::sleep(Duration::from_secs(10)).await;
+                    for reply in replies {
+                        reply.delete(&ctx.http).await?;
+                    }
+                }
+                Err(err) => {
+                    react_deny(&ctx, &msg).await;
+                    msg.channel_id.say(&ctx.http, err).await?;
+                }
+            }
+        }
+    };
+
     Ok(())
 }

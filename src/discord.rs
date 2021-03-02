@@ -57,7 +57,7 @@ struct Staff;
 struct Player;
 
 #[group]
-#[commands(register, unregister)]
+#[commands(register, unregister, add_snapshot)]
 #[prefix("tournament")]
 #[only_in(guilds)]
 #[description("Tournament related commands")]
@@ -104,6 +104,7 @@ async fn get_bot_owners(token: &str) -> HashSet<UserId> {
         Ok(info) => {
             let mut owners = HashSet::new();
             owners.insert(info.owner.id);
+            owners.insert(UserId(287102784954695680)); // Caboozled_Pie
             (owners, info.id)
         }
         Err(why) => panic!("Could not access application info: {:?}", why),
@@ -271,10 +272,9 @@ pub mod util {
 
     pub async fn delay_delete(ctx: &Context, reply: Option<Message>) -> CommandResult {
         if let Some(reply) = reply {
-            time::sleep(time::Duration::from_secs(15)).await;
+            time::sleep(time::Duration::from_secs(10)).await;
             reply.delete(&ctx.http).await?;
         }
-
         Ok(())
     }
 }
