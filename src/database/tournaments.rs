@@ -57,7 +57,7 @@ pub enum RegistrationError {
     )]
     /// User's announcement rank was outside of the restrictions
     AnnouncementRankTooHigh {
-        /// Annoucement rank
+        /// Announcement rank
         rank: Rank,
         /// Required rank
         expected: Rank,
@@ -177,6 +177,8 @@ pub struct TournamentEntry {
     snapshot_at: Option<BsonDateTime>,
     /// Whether the tournament is active right now
     active: bool,
+    /// Check-in message
+    pub check_in_msg: Option<u64>,
 }
 
 impl TournamentEntry {
@@ -195,6 +197,7 @@ impl TournamentEntry {
             player_stats_snapshot: Vec::new(),
             snapshot_at: None,
             active: false,
+            check_in_msg: None,
         }
     }
 
@@ -462,7 +465,7 @@ impl TournamentCollection {
         tracing::info!("Adding stat snapshot for tournament {}", name);
 
         // Will ensure that unranked players are not in the snapshot and are therefore easy to identify,
-        // since the players collection doesnt remove them when they become unranked
+        // since the players collection doesn't remove them when they become unranked
         let snapshot: Vec<Document> = match tetrio::leaderboard::request() {
             Ok(response) => response.data.users,
             Err(e) => return Err(DatabaseError::TetrioApiError(e)),
