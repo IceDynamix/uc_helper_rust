@@ -1,6 +1,6 @@
 # Underdogs Cup Helper Rust
 
-[![Travis CI build status](https://travis-ci.com/IceDynamix/uc_helper_rust.svg?branch=main)](https://travis-ci.com/github/IceDynamix/uc_helper_rust)
+[![Travis CI build status](https://travis-ci.com/IceDynamix/uc_helper_rust.svg?branch=main)](https://travis-ci.com/github/IceDynamix/uc_helper_rust) [![LoC Count](https://tokei.rs/b1/github/IceDynamix/uc_helper_rust)](https://github.com/XAMPPRocky/tokei)
 
 Second rust rewrite of the Python
 [Underdogs Cup Helper](https://github.com/IceDynamix/underdogs_cup_helper).
