@@ -1,12 +1,15 @@
 use std::time::Duration;
 
+use serenity::collector::ReactionAction;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
 use crate::database::tournaments::RegistrationError;
 use crate::database::DatabaseError;
 use crate::discord::util::*;
+use crate::discord::CONFIRM_EMOJI;
 
 #[command]
 #[usage("[Tetr.io username or ID]")]
@@ -202,62 +205,71 @@ async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 #[owners_only]
 async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
     let db = crate::discord::get_database(&ctx).await;
-    const CHECK_IN_CHANNEL_NAME: &str = "check-in";
 
     match db.tournaments.get_active() {
         Ok(tournament) => match tournament {
             Some(tournament) => {
-                let guild = msg.guild(&ctx.cache).await.unwrap();
-                match guild
-                    .channel_id_from_name(&ctx.cache, CHECK_IN_CHANNEL_NAME)
-                    .await
+                let check_in_msg = msg
+                    .channel_id
+                    .send_message(&ctx.http, |m| {
+                        m.embed(|e| {
+                            e.title(format!("{}: Check-in", tournament.shorthand))
+                                .description(format!(
+                                    "React to this message with {} in order to check-in!",
+                                    crate::discord::CONFIRM_EMOJI
+                                ))
+                        })
+                    })
+                    .await?;
+
+                if let Err(err) = db
+                    .tournaments
+                    .set_check_in_msg(&tournament.shorthand, check_in_msg.id.0)
                 {
-                    Some(channel) => {
-                        let check_in_msg = channel
-                            .send_message(&ctx.http, |m| {
-                                m.embed(|e| {
-                                    e.title(format!("{}: Check-in", tournament.shorthand));
-                                    e.description(format!(
-                                        "React to this message with {} in order to check-in!",
-                                        crate::discord::CONFIRM_EMOJI
-                                    ));
-                                    e
-                                });
-                                m
-                            })
-                            .await?;
+                    react_deny(&ctx, &msg).await;
+                    msg.channel_id
+                        .say(
+                            &ctx.http,
+                            format!(
+                                "Could not set check-in message in tournament db ({:?})",
+                                err
+                            ),
+                        )
+                        .await?;
+                } else {
+                    msg.delete(&ctx.http).await?;
+                    react_confirm(&ctx, &check_in_msg).await;
+                    let mut reaction_collector = check_in_msg
+                        .await_reactions(&ctx)
+                        .added(true)
+                        .removed(true)
+                        .timeout(Duration::from_secs(30))
+                        .await;
 
-                        react_confirm(&ctx, &check_in_msg).await;
+                    let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
 
-                        if let Err(err) = db
-                            .tournaments
-                            .set_check_in_msg(&tournament.shorthand, check_in_msg.id.0)
-                        {
-                            react_deny(&ctx, &msg).await;
-                            msg.channel_id
-                                .say(
-                                    &ctx.http,
-                                    format!(
-                                        "Could not set check-in message in tournament db ({:?})",
-                                        err
-                                    ),
-                                )
-                                .await?;
-                        } else {
-                            react_confirm(&ctx, &msg).await;
+                    while let Some(action) = reaction_collector.next().await {
+                        match action.as_ref() {
+                            ReactionAction::Added(reaction) if reaction.emoji == confirm_emoji => {
+                                check_in_msg
+                                    .channel_id
+                                    .say(&ctx.http, "Added reaction")
+                                    .await?;
+                            }
+                            ReactionAction::Removed(reaction)
+                                if reaction.emoji == confirm_emoji =>
+                            {
+                                check_in_msg
+                                    .channel_id
+                                    .say(&ctx.http, "Removed reaction")
+                                    .await?;
+                            }
+                            _ => {}
                         }
                     }
-                    None => {
-                        react_deny(&ctx, &msg).await;
-                        msg.channel_id
-                            .say(
-                                &ctx.http,
-                                format!("No #{} channel found", CHECK_IN_CHANNEL_NAME),
-                            )
-                            .await?;
-                        return Ok(());
-                    }
-                };
+
+                    check_in_msg.channel_id.say(&ctx.http, "Closed").await?;
+                }
             }
             None => {
                 react_deny(&ctx, &msg).await;

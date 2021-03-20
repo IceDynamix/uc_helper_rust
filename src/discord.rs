@@ -74,7 +74,8 @@ pub async fn new_client(database: LocalDatabase) -> Client {
         .intents(
             GatewayIntents::GUILDS
                 | GatewayIntents::GUILD_MESSAGES
-                | GatewayIntents::DIRECT_MESSAGES,
+                | GatewayIntents::DIRECT_MESSAGES
+                | GatewayIntents::GUILD_MESSAGE_REACTIONS,
         )
         .await
         .expect("Couldn't create client");
