@@ -197,3 +197,80 @@ async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 
     Ok(())
 }
+
+#[command]
+#[owners_only]
+async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+    const CHECK_IN_CHANNEL_NAME: &str = "check-in";
+
+    match db.tournaments.get_active() {
+        Ok(tournament) => match tournament {
+            Some(tournament) => {
+                let guild = msg.guild(&ctx.cache).await.unwrap();
+                match guild
+                    .channel_id_from_name(&ctx.cache, CHECK_IN_CHANNEL_NAME)
+                    .await
+                {
+                    Some(channel) => {
+                        let check_in_msg = channel
+                            .send_message(&ctx.http, |m| {
+                                m.embed(|e| {
+                                    e.title(format!("{}: Check-in", tournament.shorthand));
+                                    e.description(format!(
+                                        "React to this message with {} in order to check-in!",
+                                        crate::discord::CONFIRM_EMOJI
+                                    ));
+                                    e
+                                });
+                                m
+                            })
+                            .await?;
+
+                        react_confirm(&ctx, &check_in_msg).await;
+
+                        if let Err(err) = db
+                            .tournaments
+                            .set_check_in_msg(&tournament.shorthand, check_in_msg.id.0)
+                        {
+                            react_deny(&ctx, &msg).await;
+                            msg.channel_id
+                                .say(
+                                    &ctx.http,
+                                    format!(
+                                        "Could not set check-in message in tournament db ({})",
+                                        err
+                                    ),
+                                )
+                                .await?;
+                        } else {
+                            react_confirm(&ctx, &msg).await;
+                        }
+                    }
+                    None => {
+                        react_deny(&ctx, &msg).await;
+                        msg.channel_id
+                            .say(
+                                &ctx.http,
+                                format!("No #{} channel found", CHECK_IN_CHANNEL_NAME),
+                            )
+                            .await?;
+                        return Ok(());
+                    }
+                };
+            }
+            None => {
+                react_deny(&ctx, &msg).await;
+                msg.channel_id
+                    .say(&ctx.http, "No active tournament")
+                    .await?;
+            }
+        },
+        Err(err) => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id.say(&ctx.http, err).await?;
+        }
+    }
+
+    Ok(())
+}

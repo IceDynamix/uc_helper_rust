@@ -531,4 +531,20 @@ impl TournamentCollection {
     pub fn get_active(&self) -> DatabaseResult<Option<TournamentEntry>> {
         crate::database::get_entry(&self.collection, doc! {"active": true})
     }
+
+    /// Set a check-in message for a tournament
+    pub fn set_check_in_msg(&self, name: &str, message_id: u64) -> DatabaseResult<()> {
+        if self.get_tournament(name)?.is_none() {
+            return Err(DatabaseError::NotFound);
+        }
+
+        match self.collection.update_one(
+            doc! {"$or":[{"name": name}, {"shorthand": name}]},
+            doc! {"$set": {"check_in_msg": message_id}},
+            None,
+        ) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(DatabaseError::CouldNotPush),
+        }
+    }
 }
