@@ -66,7 +66,7 @@ impl PlayerEntry {
     /// of time that Tetrio caches the data server side for is different between endpoints
     /// (compare user endpoint 1min vs leaderboard endpoint 1h).
     pub fn is_cached(&self) -> bool {
-        let cache_timeout = Duration::minutes(10);
+        let cache_timeout = Duration::minutes(45);
 
         if self.tetrio_data.is_some() {
             if let Some(cache_data) = &self.cache_data {
