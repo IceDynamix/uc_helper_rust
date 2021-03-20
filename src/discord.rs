@@ -29,7 +29,7 @@ use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
-use tracing::{info, warn};
+use tracing::{error, info};
 
 use crate::commands::{owner::*, player::*, staff::*, tournament::*};
 use crate::database::LocalDatabase;
@@ -178,7 +178,7 @@ async fn after_command(
             info!("Processed command '{}'", command_name);
         }
         Err(why) => {
-            warn!("Command '{}' returned error {:?}", command_name, why);
+            error!("Command '{}' returned error {:?}", command_name, why);
             msg.react(&ctx.http, ReactionType::Unicode(ERROR_EMOJI.to_string()))
                 .await
                 .expect("Could not react?");
