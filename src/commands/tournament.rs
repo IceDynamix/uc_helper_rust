@@ -35,49 +35,26 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         }
         Err(err) => {
             react_deny(&ctx, &msg).await;
-            match err {
-                RegistrationError::MissingArgument(_) => {
-                    Some(msg.channel_id.say(
-                        &ctx.http,
-                        "There is no Tetr.io account linked to you right now, please provide a username. Run `help tournament register` for more information.",
-                    ).await?)
-                }
-                RegistrationError::AlreadyRegistered => {
-                    Some(msg.channel_id
-                        .say(&ctx.http, "You're already registered!")
-                        .await?)
-                }
+            let reply = match err {
+                RegistrationError::MissingArgument(_) =>
+                    "There is no Tetr.io account linked to you right now, please provide a username. Run `help tournament register` for more information.".to_string(),
+                RegistrationError::AlreadyRegistered => "You're already registered!".to_string(),
                 RegistrationError::RdTooHigh { .. } // TODO: refer to a faq command for rd
                 | RegistrationError::NoTournamentActive
                 | RegistrationError::CurrentRankTooHigh { .. }
                 | RegistrationError::AnnouncementRankTooHigh { .. }
                 | RegistrationError::NotEnoughGames { .. }
-                | RegistrationError::UnrankedOnAnnouncementDay(_) => {
-                    Some(msg.channel_id.say(&ctx.http, err).await?)
-                }
+                | RegistrationError::UnrankedOnAnnouncementDay(_) => format!("{:?}", err),
                 RegistrationError::DatabaseError(err) => match err {
-                    DatabaseError::DuplicateDiscordEntry => {
-                        Some(msg.channel_id
-                            .say(&ctx.http, "You're already linked to someone else! Use the `unlink` command if you'd like to link to someone else.")
-                            .await?)
-                    }
-                    DatabaseError::DuplicateTetrioEntry => {
-                        Some(msg.channel_id
-                            .say(&ctx.http, "Someone else has already linked this user!")
-                            .await?)
-                    }
-                    DatabaseError::NotFound => {
-                        Some(msg.channel_id
-                            .say(&ctx.http, "Could not find specified user!")
-                            .await?)
-                    }
-                    _ => {
-                        tracing::warn!("{}", err);
-                        Some(msg.channel_id.say(&ctx.http, err).await?)
-                    }
+                    DatabaseError::DuplicateDiscordEntry => "You're already linked to someone else! Use the `unlink` command if you'd like to link to someone else.".to_string(),
+                    DatabaseError::DuplicateTetrioEntry => "Someone else has already linked this user!".to_string(),
+                    DatabaseError::NotFound => "Could not find specified user!".to_string(),
+                    _ => format!("{:?}", err)
                 },
-                _ => { None }
-            }
+                _ => format!("{:?}", err)
+            };
+
+            Some(msg.channel_id.say(&ctx.http, reply).await?)
         }
     };
 
