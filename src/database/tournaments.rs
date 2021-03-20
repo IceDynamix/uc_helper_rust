@@ -247,10 +247,10 @@ impl TournamentEntry {
                 }
 
                 let current_rank = Rank::from_str(&current_data.league.rank).unwrap();
-                if current_rank > self.restrictions.max_rank + 1 {
+                if current_rank > self.restrictions.max_rank {
                     return Err(RegistrationError::CurrentRankTooHigh {
                         rank: current_rank,
-                        expected: self.restrictions.max_rank + 1,
+                        expected: self.restrictions.max_rank,
                     });
                 }
 
