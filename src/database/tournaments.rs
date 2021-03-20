@@ -258,6 +258,13 @@ impl TournamentEntry {
             }
         }
     }
+
+    /// Whether a user is registered to this tournament or not
+    pub fn player_is_registered(&self, player: &PlayerEntry) -> bool {
+        self.registered_players
+            .iter()
+            .any(|entry| entry.tetrio_id == player.tetrio_id)
+    }
 }
 
 /// Main wrapper for a MongoDB collection to manage tournaments

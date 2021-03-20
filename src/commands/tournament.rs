@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use serenity::collector::ReactionAction;
@@ -6,8 +7,8 @@ use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
-use crate::database::tournaments::RegistrationError;
-use crate::database::DatabaseError;
+use crate::database::tournaments::{RegistrationError, TournamentEntry};
+use crate::database::{DatabaseError, LocalDatabase};
 use crate::discord::util::*;
 use crate::discord::CONFIRM_EMOJI;
 
@@ -206,82 +207,128 @@ async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult
 async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
     let db = crate::discord::get_database(&ctx).await;
 
-    match db.tournaments.get_active() {
+    let tournament = match db.tournaments.get_active() {
         Ok(tournament) => match tournament {
-            Some(tournament) => {
-                let check_in_msg = msg
-                    .channel_id
-                    .send_message(&ctx.http, |m| {
-                        m.embed(|e| {
-                            e.title(format!("{}: Check-in", tournament.shorthand))
-                                .description(format!(
-                                    "React to this message with {} in order to check-in!",
-                                    crate::discord::CONFIRM_EMOJI
-                                ))
-                        })
-                    })
-                    .await?;
-
-                if let Err(err) = db
-                    .tournaments
-                    .set_check_in_msg(&tournament.shorthand, check_in_msg.id.0)
-                {
-                    react_deny(&ctx, &msg).await;
-                    msg.channel_id
-                        .say(
-                            &ctx.http,
-                            format!(
-                                "Could not set check-in message in tournament db ({:?})",
-                                err
-                            ),
-                        )
-                        .await?;
-                } else {
-                    msg.delete(&ctx.http).await?;
-                    react_confirm(&ctx, &check_in_msg).await;
-                    let mut reaction_collector = check_in_msg
-                        .await_reactions(&ctx)
-                        .added(true)
-                        .removed(true)
-                        .timeout(Duration::from_secs(30))
-                        .await;
-
-                    let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
-
-                    while let Some(action) = reaction_collector.next().await {
-                        match action.as_ref() {
-                            ReactionAction::Added(reaction) if reaction.emoji == confirm_emoji => {
-                                check_in_msg
-                                    .channel_id
-                                    .say(&ctx.http, "Added reaction")
-                                    .await?;
-                            }
-                            ReactionAction::Removed(reaction)
-                                if reaction.emoji == confirm_emoji =>
-                            {
-                                check_in_msg
-                                    .channel_id
-                                    .say(&ctx.http, "Removed reaction")
-                                    .await?;
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    check_in_msg.channel_id.say(&ctx.http, "Closed").await?;
-                }
-            }
+            Some(tournament) => tournament,
             None => {
                 react_deny(&ctx, &msg).await;
                 msg.channel_id
                     .say(&ctx.http, "No active tournament")
                     .await?;
+                return Ok(());
             }
         },
         Err(err) => {
             react_deny(&ctx, &msg).await;
             msg.channel_id.say(&ctx.http, err).await?;
+            return Ok(());
         }
+    };
+
+    let check_in_msg = msg
+        .channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.title(format!("{}: Check-in", tournament.shorthand))
+                    .description(format!(
+                        "React to this message with {} in order to check-in!",
+                        crate::discord::CONFIRM_EMOJI
+                    ))
+            })
+        })
+        .await?;
+
+    if let Err(err) = db
+        .tournaments
+        .set_check_in_msg(&tournament.shorthand, check_in_msg.id.0)
+    {
+        react_deny(&ctx, &msg).await;
+        msg.channel_id
+            .say(
+                &ctx.http,
+                format!(
+                    "Could not set check-in message in tournament db ({:?})",
+                    err
+                ),
+            )
+            .await?;
+    } else {
+        msg.delete(&ctx.http).await?;
+        init_checkin_reaction_handling(&ctx, db, tournament, &check_in_msg).await?;
+    }
+
+    Ok(())
+}
+
+async fn init_checkin_reaction_handling(
+    ctx: &Context,
+    db: Arc<LocalDatabase>,
+    tournament: TournamentEntry,
+    check_in_msg: &Message,
+) -> CommandResult {
+    react_confirm(&ctx, &check_in_msg).await;
+    let mut reaction_collector = check_in_msg
+        .await_reactions(&ctx)
+        .added(true)
+        .removed(true)
+        .await;
+
+    while let Some(action) = reaction_collector.next().await {
+        if let Err(e) = handle_checkin_reaction(&ctx, &db, &tournament, action).await {
+            tracing::error!("Error during check-in handling: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_checkin_reaction(
+    ctx: &Context,
+    db: &Arc<LocalDatabase>,
+    tournament: &TournamentEntry,
+    action: Arc<ReactionAction>,
+) -> CommandResult {
+    let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
+    match action.as_ref() {
+        ReactionAction::Added(reaction) | ReactionAction::Removed(reaction)
+            if reaction.emoji == confirm_emoji =>
+        {
+            let dms = reaction
+                .user_id
+                .unwrap()
+                .create_dm_channel(&ctx.http)
+                .await
+                .unwrap();
+
+            let player = match db
+                .players
+                .get_player_by_discord(reaction.user_id.unwrap().0)
+            {
+                Ok(player) => match player {
+                    Some(player) => player,
+                    None => {
+                        dms.say(&ctx.http, "Your discord user is not linked to a Tetrio account! You most likely haven't registered at all.").await?;
+                        return Ok(());
+                    }
+                },
+                Err(err) => {
+                    dms.say(&ctx.http, err).await?;
+                    return Ok(());
+                }
+            };
+
+            let reply = if tournament.player_is_registered(&player) {
+                match action.as_ref() {
+                        ReactionAction::Added(_) => "You have checked-in successfully. Please stand by until the tournament begins. Instructions on how to play in the tournament will be posted once the bracket is finalized.",
+                        ReactionAction::Removed(_) => "You have checked-out successfully."
+                    }
+            } else {
+                "You weren't registered! Please do keep in mind that registering *(which happens in the week before the tournament)* and checking in *(which happens just before the tournament)* are two different processes."
+            };
+
+            dms.say(&ctx.http, reply).await?;
+        }
+        _ => {}
     }
 
     Ok(())
