@@ -20,7 +20,7 @@ chrono = "0.4.19"
 # serenity needs 1.x but mongodb needs 0.2 if used async... so i guess i'm using mongodb without async??
 tokio = { version = "1.0", features = ["rt-multi-thread", "signal"] } # signal is used for ctrl+c
 
-serenity = "0.10.2"
+serenity = "0.10.4"
 dotenv = "0.15.0"
 tracing = "0.1.22"
 tracing-subscriber = "0.2.15"
