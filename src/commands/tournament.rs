@@ -238,7 +238,7 @@ async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
                                 .say(
                                     &ctx.http,
                                     format!(
-                                        "Could not set check-in message in tournament db ({})",
+                                        "Could not set check-in message in tournament db ({:?})",
                                         err
                                     ),
                                 )
