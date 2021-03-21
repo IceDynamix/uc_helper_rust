@@ -272,7 +272,7 @@ pub mod util {
 
     pub async fn delay_delete(ctx: &Context, reply: Option<Message>) -> CommandResult {
         if let Some(reply) = reply {
-            time::sleep(time::Duration::from_secs(30)).await;
+            time::sleep(time::Duration::from_secs(120)).await;
             reply.delete(&ctx.http).await?;
         }
         Ok(())
