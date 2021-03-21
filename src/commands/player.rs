@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
-use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils;

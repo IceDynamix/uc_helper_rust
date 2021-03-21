@@ -44,7 +44,7 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 | RegistrationError::CurrentRankTooHigh { .. }
                 | RegistrationError::AnnouncementRankTooHigh { .. }
                 | RegistrationError::NotEnoughGames { .. }
-                | RegistrationError::UnrankedOnAnnouncementDay(_) => format!("{:?}", err),
+                | RegistrationError::UnrankedOnAnnouncementDay(_) => format!("{}", err),
                 RegistrationError::DatabaseError(err) => match err {
                     DatabaseError::DuplicateDiscordEntry => "You're already linked to someone else! Use the `unlink` command if you'd like to link to someone else.".to_string(),
                     DatabaseError::DuplicateTetrioEntry => "Someone else has already linked this user!".to_string(),
