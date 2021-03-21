@@ -52,6 +52,14 @@ pub enum RegistrationError {
         /// Required rank
         expected: Rank,
     },
+    #[error("Highest-ever rank is too high (is `{rank}`, ≤ `{expected}` required)")]
+    /// User's highest-ever rank is outside of the restrictions
+    HighestRankTooHigh {
+        /// Current rank
+        rank: Rank,
+        /// Required rank
+        expected: Rank,
+    },
     #[error(
         "Rank was too high on announcement day (was `{rank}` by `{date}`, ≤ `{expected}` required)"
     )]
@@ -252,6 +260,29 @@ impl TournamentEntry {
                         rank: current_rank,
                         expected: self.restrictions.max_rank,
                     });
+                }
+
+                // No need to cache the results, register isn't called often enough for the same endpoint to require caching
+                let posts = tetrio::news::request(&format!("user_{}", current_data._id))
+                    .unwrap()
+                    .data
+                    .news;
+
+                let highest_rank = posts
+                    .iter()
+                    .filter(|post| post.post_type == "rankup")
+                    .map(|post| Rank::from_str(post.data["rank"].as_str().unwrap()).unwrap())
+                    .max();
+
+                // If there were no rankup posts, then it means that they never ranked up after the news post system was implemented.
+                // Therefore, the current rank must be the highest rank
+                if let Some(highest_rank) = highest_rank {
+                    if highest_rank > self.restrictions.max_rank {
+                        return Err(RegistrationError::CurrentRankTooHigh {
+                            rank: highest_rank,
+                            expected: self.restrictions.max_rank,
+                        });
+                    }
                 }
 
                 Ok(())
