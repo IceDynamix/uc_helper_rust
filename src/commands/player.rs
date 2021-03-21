@@ -147,7 +147,6 @@ struct FaqField {
 struct FaqEntry {
     title: String,
     description: String,
-    category: String,
     fields: Option<Vec<FaqField>>,
 }
 
