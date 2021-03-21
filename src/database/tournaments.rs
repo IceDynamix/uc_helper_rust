@@ -348,6 +348,7 @@ impl TournamentCollection {
         players: &PlayerCollection,
         tetrio_id: Option<&str>,
         discord_id: u64,
+        bypass_restrictions: bool,
     ) -> Result<PlayerEntry, RegistrationError> {
         let tournament = match self.get_active()? {
             Some(t) => t,
@@ -386,7 +387,9 @@ impl TournamentCollection {
         );
 
         // throws an error if invalid
-        tournament.check_player_stats(&stats)?;
+        if !bypass_restrictions {
+            tournament.check_player_stats(&stats)?;
+        }
 
         let tetrio_id = player.tetrio_id;
         if tournament

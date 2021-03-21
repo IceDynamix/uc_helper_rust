@@ -24,10 +24,10 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         &db.players,
         args.current(),
         msg.author.id.0,
+        false,
     ) {
         Ok(entry) => {
             react_confirm(&ctx, &msg).await;
-
             Some(
                 msg.channel_id
                     .send_message(&ctx.http, |m| m.set_embed(player_data_to_embed(&entry)))
