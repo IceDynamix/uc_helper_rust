@@ -54,7 +54,11 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 _ => format!("{:?}", err)
             };
 
-            Some(msg.channel_id.say(&ctx.http, reply).await?)
+            Some(
+                msg.channel_id
+                    .say(&ctx.http, format!("<@{}> {}", msg.author.id, reply))
+                    .await?,
+            )
         }
     };
 
