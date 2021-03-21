@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
+use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils;
@@ -205,6 +206,60 @@ async fn faq(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             })
         })
         .await?;
+
+    Ok(())
+}
+
+#[command("whois")]
+#[usage("[tetrio username]")]
+#[example("caboozled_pie")]
+#[example("icedynamix")]
+/// Answers frequently asked questions regarding Tetrio and UC
+///
+/// Run without any arguments to view all available entries.
+async fn who_is(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let reply = match args.current() {
+        Some(args) => {
+            let db = crate::discord::get_database(ctx).await;
+            match db.players.get_player_by_tetrio(args) {
+                Ok(player) => match player {
+                    Some(player) => match player.discord_id {
+                        Some(discord_id) => {
+                            let is_in_guild = msg
+                                .guild_id
+                                .unwrap()
+                                .member(&ctx.http, discord_id)
+                                .await
+                                .is_ok();
+
+                            if is_in_guild {
+                                format!(
+                                    "Tetr.io user `{}` is linked to <@{}> and is present on the server",
+                                    args, discord_id
+                                )
+                            } else {
+                                format!(
+                                    "Tetr.io user `{}` is linked to <@{}> and is **not** present on the server",
+                                    args, discord_id
+                                )
+                            }
+                        }
+                        None => {
+                            format!("Tetr.io user `{}` is not linked to any Discord user", args)
+                        }
+                    },
+                    None => format!("Tetr.io user `{}` was not found", args),
+                },
+                Err(err) => {
+                    tracing::warn!("{}", err);
+                    err.to_string()
+                }
+            }
+        }
+        None => "No username provided".to_string(),
+    };
+
+    msg.channel_id.say(&ctx.http, reply).await?;
 
     Ok(())
 }
