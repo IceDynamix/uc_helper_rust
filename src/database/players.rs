@@ -216,7 +216,13 @@ impl PlayerCollection {
     /// Performs the search via a document filter, should only be used internally.
     /// You're probably looking for [`PlayerCollection.unlink_by_discord()`] or
     /// [`PlayerCollection.unlink_by_tetrio()`] instead.
-    fn unlink(&self, filter: Document) -> DatabaseResult<()> {
+    fn unlink(&self, filter: Document) -> DatabaseResult<PlayerEntry> {
+        let filter_results = self.get_players(filter.clone())?;
+        let entry = match filter_results.first() {
+            Some(entry) => entry,
+            None => return Err(DatabaseError::NotFound),
+        };
+
         self.collection
             .update_one(
                 filter,
@@ -224,11 +230,12 @@ impl PlayerCollection {
                 None,
             )
             .map_err(|_| DatabaseError::CouldNotPush)?;
-        Ok(())
+
+        Ok(entry.clone())
     }
 
     /// Undoes the link made by [`PlayerCollection.link()`] for a specified Tetrio user
-    pub fn unlink_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<()> {
+    pub fn unlink_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<PlayerEntry> {
         if let Some(entry) = self.get_player_by_tetrio(tetrio_id)? {
             if entry.discord_id.is_none() {
                 Err(DatabaseError::FieldNotSet)
@@ -241,7 +248,7 @@ impl PlayerCollection {
     }
 
     /// Undoes the link made by [`PlayerCollection.link()`] for a specified Discord user ID
-    pub fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<()> {
+    pub fn unlink_by_discord(&self, discord_id: u64) -> DatabaseResult<PlayerEntry> {
         if self.get_player_by_discord(discord_id)?.is_some() {
             self.unlink(doc! {"discord_id": discord_id})
         } else {

@@ -4,6 +4,7 @@ use serenity::model::prelude::*;
 use serenity::prelude::*;
 use serenity::utils;
 
+use crate::database::players::PlayerEntry;
 use crate::database::DatabaseError;
 use crate::discord;
 use crate::discord::util::*;
@@ -123,9 +124,13 @@ async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 /// Removes the link between you and your linked Tetr.io user
 async fn unlink(ctx: &Context, msg: &Message) -> CommandResult {
     let db = crate::discord::get_database(ctx).await;
-    let reply = match db.players.unlink_by_discord(msg.author.id.0) {
-        Ok(_) => {
+
+    let mut player_entry: Option<PlayerEntry> = None;
+
+    let unlink_reply = match db.players.unlink_by_discord(msg.author.id.0) {
+        Ok(entry) => {
             react_confirm(&ctx, &msg).await;
+            player_entry = Some(entry);
             None
         }
         Err(err) => match err {
@@ -133,15 +138,30 @@ async fn unlink(ctx: &Context, msg: &Message) -> CommandResult {
                 Some(msg.channel_id.say(&ctx.http, "There is no Tetr.io user linked to you right now, use the `link` command to link one").await?)
             }
             _ => {
-                tracing::warn!("{}", err);
                 Some(msg.channel_id.say(&ctx.http, err).await?)
             }
         },
     };
 
-    // TODO: unregister if registered
+    if let Some(entry) = player_entry {
+        let unregister_reply = if db
+            .tournaments
+            .unregister_by_tetrio(&db.players, &entry.tetrio_id)
+            .is_ok()
+        {
+            Some(
+                msg.channel_id
+                    .say(&ctx.http, "Unregistered from the ongoing tournament")
+                    .await?,
+            )
+        } else {
+            None
+        };
 
-    delay_delete(&ctx, reply).await?;
+        delay_delete(&ctx, unregister_reply).await?;
+    }
+
+    delay_delete(&ctx, unlink_reply).await?;
 
     Ok(())
 }
