@@ -270,6 +270,7 @@ async fn handle_checkin_reaction(
         ReactionAction::Added(reaction) | ReactionAction::Removed(reaction)
             if reaction.emoji == confirm_emoji =>
         {
+            // TODO: Temporary mention if no dm possible
             let dms = reaction
                 .user_id
                 .unwrap()

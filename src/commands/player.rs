@@ -138,9 +138,17 @@ async fn unlink(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[derive(Deserialize)]
+struct FaqField {
+    name: String,
+    value: String,
+}
+
+#[derive(Deserialize)]
 struct FaqEntry {
     title: String,
     description: String,
+    category: String,
+    fields: Option<Vec<FaqField>>,
 }
 
 const FAQ_FILE_PATH: &str = "./faq.json";
@@ -164,7 +172,16 @@ async fn faq(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         if let Some(entry) = FAQ_ENTRIES.get(&*arg.to_lowercase()) {
             msg.channel_id
                 .send_message(&ctx.http, |m| {
-                    m.embed(|e| e.title(&entry.title).description(&entry.description))
+                    m.embed(|e| {
+                        e.title(&entry.title);
+                        e.description(&entry.description);
+                        if let Some(fields) = &entry.fields {
+                            for f in fields {
+                                e.field(f.name.clone(), f.value.clone(), false);
+                            }
+                        }
+                        e
+                    })
                 })
                 .await?;
             return Ok(());
@@ -172,6 +189,8 @@ async fn faq(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     // entry not found or no query passed
+
+    // TODO: Categorize the entries
 
     let mut keys: Vec<String> = FAQ_ENTRIES.keys().cloned().collect();
     keys.sort();

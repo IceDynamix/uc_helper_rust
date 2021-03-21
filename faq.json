@@ -1,22 +1,97 @@
 {
   "apm": {
     "title": "Attack per minute",
-    "description": "APM stands for **Attack per minute** and refers to how quickly you are sending garbage lines during a match. One garbage line sent is considered one attack. The stat is displayed in-game and in Tetra Channel, and is the average of your last 10 ranked games."
+    "description": "APM stands for **Attack per minute** and refers to how quickly you are sending garbage lines during a match. One garbage line sent is considered one attack. The stat is displayed in-game and in Tetra Channel, and is the average of your last 10 ranked games.",
+    "category": "Terminology"
   },
   "app": {
     "title": "Attack per piece",
-    "description": "APM stands for **Attack per piece** and refers to how efficiently you are sending garbage during a match. This stat is not shown in-game and has to be calculated manually. You can get this number by calculating `APP = APM / ( PPS * 60 )`."
+    "description": "APM stands for **Attack per piece** and refers to how efficiently you are sending garbage during a match. This stat is not shown in-game and has to be calculated manually. You can get this number by calculating `APP = APM / ( PPS * 60 )`.",
+    "category": "Terminology"
   },
   "pps": {
     "title": "Pieces per second",
-    "description": "PPS stands for **Pieces per second** and refers to how quickly you can place blocks. The stat displayed in-game and in Tetra Channel is the average of your last 10 ranked games."
+    "description": "PPS stands for **Pieces per second** and refers to how quickly you can place blocks. The stat displayed in-game and in Tetra Channel is the average of your last 10 ranked games.",
+    "category": "Terminology"
   },
   "rd": {
     "title": "Rating Deviation",
-    "description": "RD stands for **Rating Deviation** and represents the system's confidence in your current Tetra League rating, with lower being better. You can find this number on any profile on Tetra Channel, behind the '±' of your Glicko rating.\n\nThe number increases over time, and decreases as you play. If your RD is above 100, then you will be considered unranked."
+    "description": "RD stands for **Rating Deviation** and represents the system's confidence in your current Tetra League rating, with lower being better. You can find this number on any profile on Tetra Channel, behind the '±' of your Glicko rating.\n\nThe number increases over time, and decreases as you play. If your RD is above 100, then you will be considered unranked.",
+    "category": "Terminology"
   },
   "vs": {
     "title": "Versus Score",
-    "description": "VS stands for **Versus Score** and is an indicator of how well you are performing during a match. It's used in parallel to APM and PPS and it aims to be a metric that balances both mentioned stats. It is calculated as following:\n\n> `VS = [ ( lines sent + garbage cleared ) / pieces ] * PPS * 100`\n\nThis stat is used as the basis for bracket seeding in Underdogs Cup tournaments."
+    "description": "VS stands for **Versus Score** and is an indicator of how well you are performing during a match. It's used in parallel to APM and PPS and it aims to be a metric that balances both mentioned stats. It is calculated as following:\n\n> `VS = [ ( lines sent + garbage cleared ) / pieces ] * PPS * 100`\n\nThis stat is used as the basis for bracket seeding in Underdogs Cup tournaments.",
+    "category": "Terminology"
+  },
+  "bracket": {
+    "title": "Bracket / Matchups",
+    "description": "You can find the brackets/match-ups [here](https://challonge.com/Underdogs_Charity). The bracket will stay empty until the check-in has concluded, a player list can be found [here](https://docs.google.com/spreadsheets/d/1IhTxdI2TxUnqRjbqyL1ZQgfaQgLm5HHv1XrGm2DHvNc/edit#gid=242123063) instead.",
+    "category": "Tournament"
+  },
+  "rules": {
+    "title": "Rules",
+    "description": "You can find the full list of rules [here](https://challonge.com/Underdogs_Charity).",
+    "category": "Tournament"
+  },
+  "checkin": {
+    "title": "Check-in",
+    "description": "A #check-in channel will open one hour before the tournament commences. You will have to react to the message in the channel and will receive a private message regarding your check-in status. It is required to check-in in order to play in the tournament. If you did not check-in in time (before the channel closes), then it is not possible to add you afterwards.\n\nYou can unreact to the message before check-in ends if you decide to pull back from the tournament.\n\nIt is also important to note that registration and check-in are two different things. If you didn't register in the week until registrations close (usually on the day before check-ins) then you will not be eligible to participate in the tournament.\n\nIf you set your privacy in a way that doesn't allow the bot to message you, then you will be mentioned in a temporary message in the #check-in channel instead.",
+    "category": "Tournament"
+  },
+  "settings": {
+    "title": "Match Settings",
+    "description": "Settings for FT5: `/set meta.match.ft=5;game.options.gincrease=0.0035;game.options.gmargin=7200`\nSettings for FT7: `/set meta.match.ft=7;game.options.gincrease=0.0035;game.options.gmargin=7200`",
+    "category": "Tournament"
+  },
+  "match": {
+    "title": "Match Procedure",
+    "description": "These are the basic steps to play a proper tournament match. You can find additional details regarding match procedure in the [bracket description](https://challonge.com/Underdogs_Charity).",
+    "category": "Match Procedure",
+    "fields": [
+      {
+        "name": "1. Know who your opponent is!",
+        "value": "Check the [bracket](https://challonge.com/Underdogs_Charity) for your match up. `.faq bracket` for more information."
+      },
+      {
+        "name": "2. Find your opponent!",
+        "value": "Look for their Discord and ping them accordingly, their Discord username should be the same as their Tetr.io username.\n\nThe Underdogs Cup Helper will change the username of a Discord user once they register or link their account. This is to ensure that all players can be easily found by simply mentioning/pinging them on the server.\n\nUse the `.whois <tetrio username>` command in case someone doesn't show up when you try to mention them.If your opponent actually left the server, then please contact a staff member with your match number and your opponent..\n\nPlease give your opponent **10 minutes** of time to respond to your initial message. If there has been no response after 10 minutes, then please contact a staff member as well."
+      },
+      {
+        "name": "3. Create the room!",
+        "value": "Once you've contacted the opponent, create a private Tetr.io room and invite your opponent, use the appropriate command in the multiplayer room chat to set the tournament settings.\n\nFT5: `/set meta.match.ft=5;game.options.gincrease=0.0035;game.options.gmargin=7200`\nFT7: `/set meta.match.ft=7;game.options.gincrease=0.0035;game.options.gmargin=7200`"
+      },
+      {
+        "name": "4. Play the match!",
+        "value": "This should be the easiest part, it's what you came for in the end! You and your opponent can choose to play a warm-up set with FT1, after which the match must begin.\n\nUnder the unfortunate circumstance that a player disconnects, the game (not the set) goes to the player that stays connected. A game officially starts when the first piece appears at the top of the board. Under the event that a player disconnects in between rounds or before the first round starts, no penalty will be given."
+      },
+      {
+        "name": "5. Post your match results!",
+        "value": "Once your match has concluded, make sure to send a screenshot of your match results into the #results channel.\n\nYou can make a screenshot on Windows 10 with the `Win+Shift+S` shortcut. This opens up the new snipping tool, which you can use to select an area to screenshot. The screenshot will be copied into your clipboard and can be pasted into Discord to post with `Ctrl+V`."
+      },
+      {
+        "name": "6. Repeat!",
+        "value": "Look out for your next opponent and repeat the previous steps! The bracket will update in real-time as staff members enter the results. Do keep in mind that this tournament is **Double Elimination**, which means that you have to lose twice to be eliminated from the tournament. Good luck and have fun!"
+      }
+    ]
+  },
+  "findopponent": {
+    "title": "My opponent doesn't seem to be on the server",
+    "description": "The Underdogs Cup Helper will change the username of a Discord user once they register or link their account. This is to ensure that all players can be easily found by simply mentioning/pinging them on the server.\n\nUse the `.whois <tetrio username>` command in case someone doesn't show up when you try to mention them.\n\nIf your opponent actually left the server, then please contact a staff member with your match number and your opponent.",
+    "category": "Match Procedure"
+  },
+  "noshow": {
+    "title": "Opponent isn't responding",
+    "description": "Please give your opponent **10 minutes** of time to respond to your initial message. If there was no response after 10 minutes, then please contact a staff member with your match number and your opponent.",
+    "category": "Match Procedure"
+  },
+  "results": {
+    "title": "Results posting",
+    "description": "Once your match has concluded, make sure to send a screenshot of your match results into the #results channel.\n\nYou can make a screenshot on Windows 10 with the `Win+Shift+S` shortcut. This opens up the new snipping tool, which you can use to select an area to screenshot. The screenshot will be copied into your clipboard and can be pasted into Discord to post with `Ctrl+V`.",
+    "category": "Match Procedure"
+  },
+  "playerlist": {
+    "title": "Player List",
+    "description": "[Spreadsheet](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1398529569)\n\nThe spreadsheet will add registered players hourly, but **will not update the stats regularly**.\nThe next time all player stats will be updated is before/during check-in, for seeding purposes.\nIf you'd like to force a refresh on your data, then run `.stats <username>` with your username in any bot-allowed channel."
   }
 }
