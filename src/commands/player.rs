@@ -80,6 +80,15 @@ async fn link(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             let db = crate::discord::get_database(ctx).await;
             match db.players.link(msg.author.id.0, args) {
                 Ok(entry) => {
+                    let member = msg.member(&ctx.http).await.expect("Not in guild");
+                    if let Some(tetrio_data) = &entry.tetrio_data {
+                        if let Err(e) = member.edit(&ctx.http, |member| member.nickname(&tetrio_data.username)).await {
+                            msg.channel_id
+                                .say(&ctx.http, format!("Could not change nickname ({})", e))
+                                .await?;
+                        }
+                    }
+
                     react_confirm(&ctx, &msg).await;
                     Some(msg.channel_id
                         .send_message(&ctx.http, |m| m.set_embed(player_data_to_embed(&entry)))
