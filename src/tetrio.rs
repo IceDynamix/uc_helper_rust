@@ -19,12 +19,13 @@
 use std::fmt::Formatter;
 
 use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
 pub mod leaderboard;
+pub mod news;
 pub mod user;
 
 /// The base URL of the Tetrio API
