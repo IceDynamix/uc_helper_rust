@@ -233,7 +233,7 @@ impl PlayerCollection {
             if entry.discord_id.is_none() {
                 Err(DatabaseError::FieldNotSet)
             } else {
-                self.unlink(doc! {"tetrio_id": tetrio_id})
+                self.unlink(doc! {"$or": [{"tetrio_id": tetrio_id.to_lowercase()}, {"tetrio_data.username": tetrio_id.to_lowercase()}]})
             }
         } else {
             Err(DatabaseError::NotFound)
