@@ -194,7 +194,7 @@ impl PlayerCollection {
             };
         }
 
-        let entry = self.update_player(tetrio_id)?; // if the specified player doesnt exist then this will err
+        let entry = self.update_player(&tetrio_id.to_lowercase())?; // if the specified player doesnt exist then this will err
 
         if entry.discord_id.map_or(false, |id| id != discord_id) {
             return Err(DatabaseError::DuplicateTetrioEntry);
@@ -253,7 +253,7 @@ impl PlayerCollection {
     pub fn get_player_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<Option<PlayerEntry>> {
         crate::database::get_entry(
             &self.collection,
-            doc! {"$or": [{"tetrio_id": tetrio_id}, {"tetrio_data.username": tetrio_id}]},
+            doc! {"$or": [{"tetrio_id": tetrio_id.to_lowercase()}, {"tetrio_data.username": tetrio_idtetrio_id.to_lowercase()}]},
         )
     }
 
