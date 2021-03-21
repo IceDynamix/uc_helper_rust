@@ -38,7 +38,7 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
             react_deny(&ctx, &msg).await;
             let reply = match err {
                 RegistrationError::MissingArgument(_) =>
-                    "There is no Tetr.io account linked to you right now, please provide a username. Run `help tournament register` for more information.".to_string(),
+                    "There is no Tetr.io account linked to you right now, please provide a username. `.register [username]`".to_string(),
                 RegistrationError::AlreadyRegistered => "You're already registered!".to_string(),
                 RegistrationError::RdTooHigh { .. } // TODO: refer to a faq command for rd
                 | RegistrationError::NoTournamentActive
