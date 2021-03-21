@@ -253,7 +253,7 @@ impl PlayerCollection {
     pub fn get_player_by_tetrio(&self, tetrio_id: &str) -> DatabaseResult<Option<PlayerEntry>> {
         crate::database::get_entry(
             &self.collection,
-            doc! {"$or": [{"tetrio_id": tetrio_id.to_lowercase()}, {"tetrio_data.username": tetrio_idtetrio_id.to_lowercase()}]},
+            doc! {"$or": [{"tetrio_id": tetrio_id.to_lowercase()}, {"tetrio_data.username": tetrio_id.to_lowercase()}]},
         )
     }
 
