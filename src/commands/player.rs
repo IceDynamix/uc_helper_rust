@@ -214,9 +214,7 @@ async fn faq(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[usage("[tetrio username]")]
 #[example("caboozled_pie")]
 #[example("icedynamix")]
-/// Answers frequently asked questions regarding Tetrio and UC
-///
-/// Run without any arguments to view all available entries.
+/// Gets the Discord user linked with a given Tetr.io user and will also say whether the user is present on the server or not
 async fn who_is(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let reply = match args.current() {
         Some(args) => {
