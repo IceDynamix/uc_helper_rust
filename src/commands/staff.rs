@@ -140,3 +140,97 @@ async fn staff_unregister(ctx: &Context, msg: &Message, args: Args) -> CommandRe
 
     Ok(())
 }
+
+#[command]
+async fn staff_link(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+
+    let discord_id = match args.current() {
+        Some(arg) => match serenity::utils::parse_mention(arg) {
+            Some(discord_id) => discord_id,
+            None => {
+                react_deny(&ctx, &msg).await;
+                msg.channel_id
+                    .say(
+                        &ctx.http,
+                        "First argument was not a mention (`.staff_link <mention> <username>`)",
+                    )
+                    .await?;
+                return Ok(());
+            }
+        },
+        None => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    "Discord mention/ping missing (`.staff_link <mention> <username>`)",
+                )
+                .await?;
+            return Ok(());
+        }
+    };
+
+    args.advance();
+
+    let username = match args.current() {
+        Some(username) => username,
+        None => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id
+                .say(
+                    &ctx.http,
+                    "Username missing (`.staff_link <mention> <username>`)",
+                )
+                .await?;
+            return Ok(());
+        }
+    };
+
+    match db.players.link(discord_id, username) {
+        Ok(_) => {
+            react_confirm(&ctx, &msg).await;
+        }
+        Err(err) => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id.say(&ctx.http, err).await?;
+        }
+    }
+
+    Ok(())
+}
+
+#[command]
+async fn staff_unlink(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+
+    match args.current() {
+        None => {
+            msg.channel_id
+                .say(&ctx.http, "No username or mention provided")
+                .await?;
+        }
+        Some(arg) => match serenity::utils::parse_mention(arg) {
+            Some(discord_id) => match db.players.unlink_by_discord(discord_id) {
+                Ok(_) => {
+                    react_confirm(&ctx, &msg).await;
+                }
+                Err(err) => {
+                    react_deny(&ctx, &msg).await;
+                    msg.channel_id.say(&ctx.http, err).await?;
+                }
+            },
+            None => match db.players.unlink_by_tetrio(arg) {
+                Ok(_) => {
+                    react_confirm(&ctx, &msg).await;
+                }
+                Err(err) => {
+                    react_deny(&ctx, &msg).await;
+                    msg.channel_id.say(&ctx.http, err).await?;
+                }
+            },
+        },
+    }
+
+    Ok(())
+}

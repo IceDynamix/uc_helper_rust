@@ -44,7 +44,7 @@ pub const ERROR_EMOJI: &str = "❌";
 struct Owner;
 
 #[group]
-#[commands(update_all, staff_register, staff_unregister)]
+#[commands(update_all, staff_register, staff_unregister, staff_link, staff_unlink)]
 #[allowed_roles("Staff")]
 #[help_available(false)]
 #[only_in(guilds)]
