@@ -28,6 +28,7 @@ async fn register(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     ) {
         Ok(entry) => {
             react_confirm(&ctx, &msg).await;
+            super::player::rename_user_to_tetrio(&ctx, msg, &entry).await?;
             Some(
                 msg.channel_id
                     .send_message(&ctx.http, |m| m.set_embed(player_data_to_embed(&entry)))
