@@ -168,10 +168,8 @@ impl RegistrationEntry {
 /// Represents an entry as it's saved in the collection
 pub struct TournamentEntry {
     /// Name of the tournament, expected to be unique
-    /// TODO: Make sure it is unique
     pub name: String,
     /// Shorthand or abbreviation of the tournament, expected to be unique
-    /// TODO: Make sure it is unique
     pub shorthand: String,
     /// When the tournament entry was created
     created_at: BsonDateTime,
@@ -322,6 +320,11 @@ impl TournamentCollection {
     ) -> DatabaseResult<TournamentEntry> {
         tracing::info!("Creating tournament {} ({})", name, shorthand);
         let entry = TournamentEntry::new(name, shorthand, restrictions);
+
+        if self.get_tournament(name)?.is_some() {
+            return Err(DatabaseError::DuplicateTournamentEntry);
+        }
+
         match self.collection.insert_one(
             bson::to_document(&entry).expect("could not convert to document"),
             None,

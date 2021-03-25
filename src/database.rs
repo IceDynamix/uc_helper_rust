@@ -82,6 +82,9 @@ pub enum DatabaseError {
     #[error("Discord user already exists")]
     /// A Discord user is already in the database
     DuplicateDiscordEntry,
+    #[error("Tournament already exists")]
+    /// A tournament with that name is already in the database
+    DuplicateTournamentEntry,
     #[error("Could not parse document to entry: {0}")]
     /// Could not parse document to entry
     CouldNotParse(String),
