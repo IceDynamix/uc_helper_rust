@@ -36,7 +36,7 @@
   },
   "checkin": {
     "title": "Check-in",
-    "description": "A #check-in channel will open one hour before the tournament commences. You will have to react to the message in the channel and will receive a private message regarding your check-in status. It is required to check-in in order to play in the tournament. If you did not check-in in time (before the channel closes), then it is not possible to add you afterwards.\n\nYou can unreact to the message before check-in ends if you decide to pull back from the tournament.\n\nIt is also important to note that registration and check-in are two different things. If you didn't register in the week until registrations close (usually on the day before check-ins) then you will not be eligible to participate in the tournament.\n\nIf you set your privacy in a way that doesn't allow the bot to message you, then you will be mentioned in a temporary message in the #check-in channel instead.",
+    "description": "A #check-in channel will open one hour before the tournament commences. You will have to react to the message in the channel and will receive a public message in a log channel regarding your check-in status. It is required to check-in in order to play in the tournament. If you did not check-in in time (before the channel closes), then it is not possible to add you afterwards.\n\nYou can unreact to the message before check-in ends if you decide to pull back from the tournament.\n\nIt is also important to note that registration and check-in are two different things. If you didn't register in the week until registrations close (usually on the day before check-ins) then you will not be eligible to participate in the tournament.",
     "category": "Tournament"
   },
   "settings": {
@@ -55,7 +55,7 @@
       },
       {
         "name": "2. Find your opponent!",
-        "value": "Look for their Discord and ping them accordingly, their Discord username should be the same as their Tetr.io username.\n\nThe Underdogs Cup Helper will change the username of a Discord user once they register or link their account. This is to ensure that all players can be easily found by simply mentioning/pinging them on the server.\n\nUse the `.whois <tetrio username>` command in case someone doesn't show up when you try to mention them.If your opponent actually left the server, then please contact a staff member with your match number and your opponent..\n\nPlease give your opponent **10 minutes** of time to respond to your initial message. If there has been no response after 10 minutes, then please contact a staff member as well."
+        "value": "Look for their Discord and ping them accordingly, their Discord username should be the same as their Tetr.io username.\n\nThe Underdogs Cup Helper will change the username of a Discord user once they register or link their account. This is to ensure that all players can be easily found by simply mentioning/pinging them on the server.\n\nUse the `.whois <tetrio username>` command in case someone doesn't show up when you try to mention them. If your opponent actually left the server, then please contact a staff member with your match number and your opponent.\n\nPlease give your opponent **10 minutes** of time to respond to your initial message. If there has been no response after 10 minutes, then please contact a staff member as well."
       },
       {
         "name": "3. Create the room!",
@@ -92,6 +92,10 @@
   },
   "playerlist": {
     "title": "Player List",
-    "description": "[Spreadsheet](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1398529569)\n\nThe spreadsheet will add registered players hourly, but **will not update the stats regularly**.\nThe next time all player stats will be updated is before/during check-in, for seeding purposes.\nIf you'd like to force a refresh on your data, then run `.stats <username>` with your username in any bot-allowed channel."
+    "description": "[Spreadsheet](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1398529569)\n\nThe spreadsheet will add registered players hourly, but **will not update the stats regularly**. The next time all player stats will be updated is before/during check-in, for seeding purposes. If you'd like to force a refresh on your data, then run `.stats <username>` with your username in any bot-allowed channel."
+  },
+  "streamed": {
+    "title": "Streamed match",
+    "description": "It's possible that your match gets chosen to be streamed on Caboozled's Twitch! Staff will contact you in case this happens and give you further instructions on what to in that situation. Staff will usually prepare a room for you and your opponent to join and have you stand by in the room until everything is ready."
   }
 }
