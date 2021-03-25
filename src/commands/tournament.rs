@@ -214,7 +214,7 @@ async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
             m.embed(|e| {
                 e.title(format!("{}: Check-in", tournament.shorthand))
                     .description(format!(
-                        "React to this message with {} in order to check-in!",
+                        "React to this message with {} in order to check-in! Unreact to check-out.",
                         crate::discord::CONFIRM_EMOJI
                     ))
             })
@@ -237,7 +237,7 @@ async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
             .await?;
     } else {
         msg.delete(&ctx.http).await?;
-        init_checkin_reaction_handling(&ctx, db, tournament, &check_in_msg).await?;
+        init_checkin_reaction_handling(&ctx, db, tournament, &msg, &check_in_msg).await?;
     }
 
     Ok(())
@@ -247,6 +247,7 @@ async fn init_checkin_reaction_handling(
     ctx: &Context,
     db: Arc<LocalDatabase>,
     tournament: TournamentEntry,
+    msg: &Message,
     check_in_msg: &Message,
 ) -> CommandResult {
     react_confirm(&ctx, &check_in_msg).await;
@@ -256,9 +257,28 @@ async fn init_checkin_reaction_handling(
         .removed(true)
         .await;
 
-    while let Some(action) = reaction_collector.next().await {
-        if let Err(e) = handle_checkin_reaction(&ctx, &db, &tournament, action).await {
-            tracing::error!("Error during check-in handling: {}", e);
+    let channels = msg
+        .guild_id
+        .expect("Guild not cached")
+        .channels(&ctx.http)
+        .await
+        .expect("Could not get channels");
+
+    let mut log_channel = None;
+
+    for (_, channel) in channels.iter() {
+        if channel.name == "check-in-log" {
+            log_channel = Some(channel);
+        }
+    }
+
+    if let Some(log_channel) = log_channel {
+        while let Some(action) = reaction_collector.next().await {
+            if let Err(e) =
+                handle_checkin_reaction(&ctx, &db, &tournament, &log_channel, action).await
+            {
+                tracing::error!("Error during check-in handling: {}", e);
+            }
         }
     }
 
@@ -269,6 +289,7 @@ async fn handle_checkin_reaction(
     ctx: &Context,
     db: &Arc<LocalDatabase>,
     tournament: &TournamentEntry,
+    log_channel: &GuildChannel,
     action: Arc<ReactionAction>,
 ) -> CommandResult {
     let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
@@ -276,41 +297,35 @@ async fn handle_checkin_reaction(
         ReactionAction::Added(reaction) | ReactionAction::Removed(reaction)
             if reaction.emoji == confirm_emoji =>
         {
-            // TODO: Temporary mention if no dm possible
-            let dms = reaction
-                .user_id
-                .unwrap()
-                .create_dm_channel(&ctx.http)
-                .await
-                .unwrap();
-
-            let player = match db
-                .players
-                .get_player_by_discord(reaction.user_id.unwrap().0)
-            {
+            let discord_id = reaction.user_id.unwrap().0;
+            let player = match db.players.get_player_by_discord(discord_id) {
                 Ok(player) => match player {
                     Some(player) => player,
                     None => {
-                        dms.say(&ctx.http, "Your discord user is not linked to a Tetrio account! You most likely haven't registered at all.").await?;
+                        log_channel.say(&ctx.http, format!("<@{}> Your Discord user is not linked to a Tetrio account! You most likely haven't registered at all.", discord_id)).await?;
                         return Ok(());
                     }
                 },
                 Err(err) => {
-                    dms.say(&ctx.http, err).await?;
+                    log_channel.say(&ctx.http, err).await?;
                     return Ok(());
                 }
             };
 
-            let reply = if tournament.player_is_registered(&player) {
-                match action.as_ref() {
-                        ReactionAction::Added(_) => "You have checked-in successfully. Please stand by until the tournament begins. Instructions on how to play in the tournament will be posted once the bracket is finalized.",
-                        ReactionAction::Removed(_) => "You have checked-out successfully."
-                    }
-            } else {
-                "You weren't registered! Please do keep in mind that registering *(which happens in the week before the tournament)* and checking in *(which happens just before the tournament)* are two different processes."
+            let player_is_registered = tournament.player_is_registered(&player);
+
+            let reply = match action.as_ref() {
+                ReactionAction::Added(_) if player_is_registered => Some("You have checked-in successfully. Please stand by until the tournament begins. Instructions on how to play in the tournament will be posted once the bracket is finalized."),
+                ReactionAction::Added(_) if !player_is_registered => Some("You weren't registered! Please do keep in mind that registering *(which happens in the week before the tournament)* and checking in *(which happens just before the tournament)* are two different processes."),
+                ReactionAction::Removed(_) if player_is_registered => Some("You have checked-out successfully. If you'd like to check back in, then react to the check-in message again."),
+                _ => None
             };
 
-            dms.say(&ctx.http, reply).await?;
+            if let Some(reply) = reply {
+                log_channel
+                    .say(&ctx.http, format!("<@{}> {}", discord_id, reply))
+                    .await?;
+            }
         }
         _ => {}
     }
