@@ -133,16 +133,14 @@ async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult
                 }
             };
 
-            let mut replies = Vec::new();
-
-            replies.push(
+            let mut replies = vec![
                 msg.channel_id
                     .say(
                         &ctx.http,
                         "Updating all player stats, could take a few minutes...",
                     )
                     .await?,
-            );
+            ];
 
             let typing = msg.channel_id.start_typing(&ctx.http)?;
             let update_result = db.players.update_from_leaderboard();

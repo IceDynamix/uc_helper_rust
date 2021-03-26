@@ -1,6 +1,6 @@
 //! Data classes and functions regarding the Tetrio API.
 //!
-//! All functions are written synchronously, for tokio runtime reasons related to usage in the Discord bot client.  
+//! All functions are written synchronously, for tokio runtime reasons related to usage in the Discord bot client.
 //!
 //! Only Leaderboard and User endpoints are implemented for now. There is no caching going on, all of the caching is managed by the database module.
 //! Therefore in the optimal use-case, the [crate::discord] module should never call from this module directly, only the [crate::database] commands.
@@ -157,6 +157,7 @@ pub enum Rank {
     SMinus,
     S,
     SPlus,
+    #[allow(clippy::upper_case_acronyms)]
     SS,
     U,
     X,
