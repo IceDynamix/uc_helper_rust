@@ -34,6 +34,16 @@
     "description": "You can find the full list of rules [here](https://challonge.com/Underdogs_Charity).",
     "category": "Tournament"
   },
+  "when": {
+    "title": "Countdown",
+    "description": "You can find a countdown for the tournament [here](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1038350370).",
+    "category": "Tournament"
+  },
+  "countdown": {
+    "title": "Countdown",
+    "description": "You can find a countdown for the tournament [here](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1038350370).",
+    "category": "Tournament"
+  },
   "checkin": {
     "title": "Check-in",
     "description": "A #check-in channel will open one hour before the tournament commences. You will have to react to the message in the channel and will receive a public message in a log channel regarding your check-in status. It is required to check-in in order to play in the tournament. If you did not check-in in time (before the channel closes), then it is not possible to add you afterwards.\n\nYou can unreact to the message before check-in ends if you decide to pull back from the tournament.\n\nIt is also important to note that registration and check-in are two different things. If you didn't register in the week until registrations close (usually on the day before check-ins) then you will not be eligible to participate in the tournament.",
