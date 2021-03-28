@@ -17,11 +17,10 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use serenity::client::bridge::gateway::GatewayIntents;
 use serenity::framework::standard::{
     help_commands,
     macros::{group, help, hook},
-    Args, CommandGroup, CommandResult, HelpOptions,
+    Args, CommandGroup, CommandOptions, CommandResult, HelpOptions,
 };
 use serenity::http::Http;
 use serenity::model::prelude::*;
@@ -29,14 +28,19 @@ use serenity::{
     async_trait, client::bridge::gateway::ShardManager, framework::StandardFramework,
     model::gateway::Ready, prelude::*,
 };
+use serenity::{
+    client::bridge::gateway::GatewayIntents,
+    framework::standard::{macros::check, Reason},
+};
 use tracing::{error, info};
 
-use crate::commands::{owner::*, player::*, staff::*, tournament::*};
+use crate::commands::{global::*, owner::*, player::*, staff::*, tournament::*};
 use crate::database::LocalDatabase;
 
 pub const PREFIX: &str = ".";
 pub const CONFIRM_EMOJI: &str = "✅";
 pub const ERROR_EMOJI: &str = "❌";
+pub const UC_GUILD_ID: u64 = 718603683624910941;
 
 #[group]
 #[commands(owner_ping, owner_echo)]
@@ -45,22 +49,105 @@ struct Owner;
 
 #[group]
 #[commands(update_all, staff_register, staff_unregister, staff_link, staff_unlink)]
-#[allowed_roles("Staff")]
-#[help_available(false)]
+#[checks(has_staff_role)]
 #[only_in(guilds)]
 #[description("Management commands restricted to staff members")]
 struct Staff;
 
 #[group]
-#[commands(faq, stats, link, unlink, who_is)]
+#[checks(bot_channel_check)]
+#[commands(stats, link, unlink)]
 #[description("Tetr.io player related commands")]
 struct Player;
 
 #[group]
-#[commands(register, unregister, add_snapshot, create_check_in)]
+#[commands(faq, who_is)]
+#[description("Commands you can use anywhere")]
+struct Global;
+
+#[group]
+#[commands(add_snapshot, create_check_in)]
 #[only_in(guilds)]
+#[checks(bot_channel_check)]
 #[description("Tournament related commands")]
 struct Tournament;
+
+#[check]
+async fn bot_channel_check(
+    ctx: &Context,
+    msg: &Message,
+    mut args: &mut Args,
+    command_options: &CommandOptions,
+) -> Result<(), Reason> {
+    tracing::info!("bot channel check");
+    // bypass check if staff
+    if has_staff_role(&ctx, &msg, &mut args, &command_options)
+        .await
+        .is_ok()
+    {
+        tracing::info!("is staff");
+        return Ok(());
+    }
+
+    tracing::info!("continue");
+
+    let allowed_channels: Vec<u64> = vec![
+        822933641611968512, // register
+        752703502173863966, // bot spam
+        776806403884056616, // bot testing
+    ];
+
+    if !allowed_channels.contains(&msg.channel_id.0) {
+        return Err(Reason::Log("Not in correct channel".to_string()));
+    }
+
+    Ok(())
+}
+
+#[check]
+async fn has_staff_role(
+    ctx: &Context,
+    msg: &Message,
+    _: &mut Args,
+    _: &CommandOptions,
+) -> Result<(), Reason> {
+    let guild_id = msg.guild_id;
+    match guild_id {
+        None => Ok(()), // Allow DMs
+        Some(guild_id) => {
+            let member = match ctx
+                .cache
+                .guild_field(guild_id, |guild| guild.members.get(&msg.author.id).cloned())
+                .await
+            {
+                Some(Some(member)) => member,
+                // Member not found.
+                Some(None) => match ctx.http.get_member(guild_id.0, msg.author.id.0).await {
+                    Ok(member) => member,
+                    Err(_) => return Err(Reason::Log("Member not found".to_string())),
+                },
+                // Guild not found.
+                None => return Err(Reason::Log("Not in guild".to_string())),
+            };
+
+            let roles = ctx
+                .cache
+                .guild_field(guild_id, |guild| guild.roles.clone())
+                .await
+                .unwrap();
+
+            let staff_role = match roles.values().find(|role| role.name == "Staff") {
+                Some(role) => role,
+                None => return Err(Reason::Log("No staff role on guild".to_string())),
+            };
+
+            match member.roles.contains(&staff_role.id) {
+                true => Ok(()),
+                false => Err(Reason::Log("No staff role".to_string())),
+            }
+        }
+    }
+}
 
 pub async fn new_client(database: LocalDatabase) -> Client {
     let token = std::env::var("DISCORD_TOKEN").expect("No Discord token");
@@ -122,6 +209,7 @@ fn create_framework(owners: HashSet<UserId>) -> StandardFramework {
         .group(&PLAYER_GROUP)
         .group(&STAFF_GROUP)
         .group(&TOURNAMENT_GROUP)
+        .group(&GLOBAL_GROUP)
 }
 
 // make database available globally so we only maintain a single connection!
