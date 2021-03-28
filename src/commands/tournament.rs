@@ -241,6 +241,49 @@ async fn create_check_in(ctx: &Context, msg: &Message) -> CommandResult {
     Ok(())
 }
 
+#[command]
+#[owners_only]
+async fn resume_check_in(ctx: &Context, msg: &Message) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+
+    let tournament = match db.tournaments.get_active() {
+        Ok(tournament) => match tournament {
+            Some(tournament) => tournament,
+            None => {
+                react_deny(&ctx, &msg).await;
+                msg.channel_id
+                    .say(&ctx.http, "No active tournament")
+                    .await?;
+                return Ok(());
+            }
+        },
+        Err(err) => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id.say(&ctx.http, err).await?;
+            return Ok(());
+        }
+    };
+
+    let check_in_msg = match tournament.check_in_msg {
+        Some(msg_id) => msg_id,
+        None => {
+            react_deny(&ctx, &msg).await;
+            msg.channel_id
+                .say(&ctx.http, "No check-in message found")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    // TODO: hardcoded IDs
+    let check_in_msg = ctx
+        .http
+        .get_message(822933717453504562, check_in_msg)
+        .await?;
+
+    init_checkin_reaction_handling(&ctx, db, tournament, &msg, &check_in_msg).await
+}
+
 async fn init_checkin_reaction_handling(
     ctx: &Context,
     db: Arc<LocalDatabase>,
