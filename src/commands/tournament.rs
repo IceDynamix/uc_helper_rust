@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use serenity::collector::ReactionAction;
 use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::futures::StreamExt;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
+use serenity::{collector::ReactionAction, http::AttachmentType};
 
 use crate::database::tournaments::{RegistrationError, TournamentEntry};
 use crate::database::{DatabaseError, LocalDatabase};
@@ -266,7 +266,7 @@ async fn init_checkin_reaction_handling(
 
     for (_, channel) in channels.iter() {
         if channel.name == "check-in-log" {
-            log_channel = Some(channel);
+            log_channel = Some(channel.clone());
         }
     }
 
@@ -327,6 +327,72 @@ async fn handle_checkin_reaction(
         }
         _ => {}
     }
+
+    Ok(())
+}
+
+#[command]
+#[owners_only]
+async fn export_check_in(ctx: &Context, msg: &Message) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+    let tournament = match db.tournaments.get_active() {
+        Ok(tournament) => match tournament {
+            Some(tournament) => tournament,
+            None => {
+                msg.channel_id
+                    .say(&ctx.http, "No active tournament")
+                    .await?;
+                return Ok(());
+            }
+        },
+        Err(err) => {
+            msg.channel_id.say(&ctx.http, err).await?;
+            return Ok(());
+        }
+    };
+
+    let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
+
+    let channel_id = 822933717453504562; // TODO: this is hardcoded but im lazy
+    let message_id = match tournament.check_in_msg {
+        Some(msg_id) => msg_id,
+        None => {
+            msg.channel_id
+                .say(&ctx.http, "No check-in message found")
+                .await?;
+            return Ok(());
+        }
+    };
+
+    let message = ctx.http.get_message(channel_id, message_id).await?;
+
+    let mut users = Vec::new();
+    const PAGE_SIZE: u8 = 100;
+
+    loop {
+        let mut page = message
+            .reaction_users(
+                &ctx.http,
+                confirm_emoji.clone(),
+                Some(PAGE_SIZE),
+                users.last().map(|u: &User| u.id),
+            )
+            .await?;
+
+        users.append(&mut page);
+        if page.len() < PAGE_SIZE.into() {
+            break;
+        }
+    }
+
+    let user_ids: Vec<String> = users.iter().map(|u| u.id.0.to_string()).collect();
+    let line_separated = user_ids.join("\n");
+
+    // Send as txt file
+    let attachment = AttachmentType::from((line_separated.as_bytes(), "checked_in.txt"));
+    msg.channel_id
+        .send_files(&ctx.http, vec![attachment], |m| m)
+        .await?;
 
     Ok(())
 }

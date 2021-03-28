@@ -57,7 +57,7 @@ struct Staff;
 struct Player;
 
 #[group]
-#[commands(register, unregister, add_snapshot, create_check_in)]
+#[commands(add_snapshot, create_check_in)]
 #[only_in(guilds)]
 #[description("Tournament related commands")]
 struct Tournament;
