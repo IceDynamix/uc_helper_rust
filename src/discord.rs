@@ -79,17 +79,13 @@ async fn bot_channel_check(
     mut args: &mut Args,
     command_options: &CommandOptions,
 ) -> Result<(), Reason> {
-    tracing::info!("bot channel check");
     // bypass check if staff
     if has_staff_role(&ctx, &msg, &mut args, &command_options)
         .await
         .is_ok()
     {
-        tracing::info!("is staff");
         return Ok(());
     }
-
-    tracing::info!("continue");
 
     let allowed_channels: Vec<u64> = vec![
         822933641611968512, // register
