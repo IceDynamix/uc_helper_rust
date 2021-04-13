@@ -221,6 +221,15 @@ async fn setup_shared_data(database: LocalDatabase, client: &Client) {
     let mut data = client.data.write().await;
     data.insert::<LocalDatabase>(Arc::new(database));
     data.insert::<ShardManagerContainer>(client.shard_manager.clone());
+    data.insert::<IdCollection>(Mutex::new(IdCollection(HashSet::new())));
+}
+
+// Used during check-in to track which users do not require another confirmation message
+// Prevents the bot from reaching a rate limit by spamming reactions
+pub struct IdCollection(pub HashSet<u64>);
+
+impl TypeMapKey for IdCollection {
+    type Value = Mutex<IdCollection>;
 }
 
 pub async fn get_database(ctx: &Context) -> Arc<LocalDatabase> {

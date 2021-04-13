@@ -10,6 +10,7 @@ use serenity::{collector::ReactionAction, http::AttachmentType};
 use crate::database::tournaments::{RegistrationError, TournamentEntry};
 use crate::database::{DatabaseError, LocalDatabase};
 use crate::discord::util::*;
+use crate::discord::IdCollection;
 use crate::discord::CONFIRM_EMOJI;
 
 #[command]
@@ -334,16 +335,31 @@ async fn handle_checkin_reaction(
     action: Arc<ReactionAction>,
 ) -> CommandResult {
     let confirm_emoji = ReactionType::Unicode(CONFIRM_EMOJI.to_string());
+
+    let data_read = ctx.data.read().await;
+    let mut invalid_checked_in = data_read
+        .get::<IdCollection>()
+        .expect("Expected database in TypeMap")
+        .lock()
+        .await;
+
     match action.as_ref() {
         ReactionAction::Added(reaction) | ReactionAction::Removed(reaction)
             if reaction.emoji == confirm_emoji =>
         {
             let discord_id = reaction.user_id.unwrap().0;
+
+            // Prevent rate limit from unregistered people spamming reactions
+            if invalid_checked_in.0.contains(&discord_id) {
+                return Ok(());
+            }
+
             let player = match db.players.get_player_by_discord(discord_id) {
                 Ok(player) => match player {
                     Some(player) => player,
                     None => {
                         log_channel.say(&ctx.http, format!("<@{}> Your Discord user is not linked to a Tetrio account! You most likely haven't registered at all.", discord_id)).await?;
+                        invalid_checked_in.0.insert(discord_id);
                         return Ok(());
                     }
                 },
@@ -357,7 +373,10 @@ async fn handle_checkin_reaction(
 
             let reply = match action.as_ref() {
                 ReactionAction::Added(_) if player_is_registered => Some("You have checked-in successfully. Please stand by until the tournament begins. Instructions on how to play in the tournament will be posted once the bracket is finalized."),
-                ReactionAction::Added(_) if !player_is_registered => Some("You weren't registered! Please do keep in mind that registering *(which happens in the week before the tournament)* and checking in *(which happens just before the tournament)* are two different processes."),
+                ReactionAction::Added(_) if !player_is_registered => {
+                    invalid_checked_in.0.insert(discord_id);
+                    Some("You weren't registered! Please do keep in mind that registering *(which happens in the week before the tournament)* and checking in *(which happens just before the tournament)* are two different processes.")
+                },
                 ReactionAction::Removed(_) if player_is_registered => Some("You have checked-out successfully. If you'd like to check back in, then react to the check-in message again."),
                 _ => None
             };
