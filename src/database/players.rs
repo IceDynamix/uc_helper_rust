@@ -21,6 +21,8 @@ use crate::tetrio;
 use crate::tetrio::leaderboard::LeaderboardUser;
 use crate::tetrio::CacheData;
 
+use super::tournaments::TournamentEntry;
+
 /// Collection name to use in the MongoDB database
 const COLLECTION_NAME: &str = "players";
 
@@ -166,13 +168,42 @@ impl PlayerCollection {
     /// New ranked players will be added and currently ranked players will be updated.
     /// Currently unranked players will not be updated.
     ///
-    /// Can take a few minutes to update
+    /// Takes a long time to update, since most of the time is spent making database updates.
     pub fn update_from_leaderboard(&self) -> DatabaseResult<()> {
         tracing::info!("Started updating via leaderboard");
         let response = tetrio::leaderboard::request().map_err(DatabaseError::TetrioApiError)?;
 
         for user in response.data.users {
             self.update(user, &response.cache)?;
+        }
+
+        Ok(())
+    }
+
+    /// Uses the Tetrio leaderboard endpoint to update all currently registered players
+    ///
+    /// Relatively efficient, since it only uses a single request to the Tetrio API.
+    /// Cache timeouts are ignored here, since what has been requested with the
+    /// single request is already requested, so there is no harm in updating it anyway.
+    ///
+    /// New ranked players will be added and currently ranked players will be updated.
+    /// Currently unranked players will not be updated.
+    ///
+    /// Is a lot quicker than update_from_leaderboard()
+    pub fn update_registered(&self, tournament: TournamentEntry) -> DatabaseResult<()> {
+        tracing::info!("Started updating via leaderboard");
+        let response = tetrio::leaderboard::request().map_err(DatabaseError::TetrioApiError)?;
+
+        let registered: Vec<String> = tournament
+            .registered_players
+            .iter()
+            .map(|reg| reg.tetrio_id.clone())
+            .collect();
+
+        for user in response.data.users {
+            if registered.contains(&user._id) {
+                self.update(user, &response.cache)?;
+            }
         }
 
         Ok(())

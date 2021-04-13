@@ -48,7 +48,14 @@ pub const UC_GUILD_ID: u64 = 718603683624910941;
 struct Owner;
 
 #[group]
-#[commands(update_all, staff_register, staff_unregister, staff_link, staff_unlink)]
+#[commands(
+    update_all,
+    update_registered,
+    staff_register,
+    staff_unregister,
+    staff_link,
+    staff_unlink
+)]
 #[checks(has_staff_role)]
 #[only_in(guilds)]
 #[description("Management commands restricted to staff members")]

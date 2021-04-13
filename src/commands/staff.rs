@@ -26,6 +26,26 @@ async fn update_all(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+async fn update_registered(ctx: &Context, msg: &Message) -> CommandResult {
+    let typing = msg.channel_id.start_typing(&ctx.http)?;
+    let db = crate::discord::get_database(&ctx).await;
+    let tour = db.tournaments.get_active().unwrap().unwrap();
+
+    match db.players.update_registered(tour) {
+        Ok(_) => {
+            react_confirm(&ctx, &msg).await;
+        }
+        Err(err) => {
+            tracing::warn!("{}", err);
+            msg.channel_id.say(&ctx.http, err).await?;
+        }
+    }
+
+    typing.stop();
+    Ok(())
+}
+
+#[command]
 async fn staff_register(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let discord_account_to_link = match args.current() {
         Some(arg) => {

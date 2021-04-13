@@ -422,8 +422,9 @@ async fn export_check_in(ctx: &Context, msg: &Message) -> CommandResult {
             )
             .await?;
 
+        let is_incomplete_page = page.len() < PAGE_SIZE.into();
         users.append(&mut page);
-        if page.len() < PAGE_SIZE.into() {
+        if is_incomplete_page {
             break;
         }
     }

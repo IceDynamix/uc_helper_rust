@@ -150,8 +150,10 @@ impl Default for TournamentRestrictions {
 #[derive(Deserialize, Serialize, Debug)]
 /// Represents a registration in a tournament entry
 pub struct RegistrationEntry {
-    date: BsonDateTime,
-    tetrio_id: String,
+    /// When the entry was created
+    pub date: BsonDateTime,
+    /// ID of the registered player
+    pub tetrio_id: String,
 }
 
 impl RegistrationEntry {
