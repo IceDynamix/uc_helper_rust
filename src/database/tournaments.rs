@@ -277,7 +277,7 @@ impl TournamentEntry {
                 // If there were no rankup posts, then it means that they never ranked up after the news post system was implemented.
                 // Therefore, the current rank must be the highest rank
                 if let Some(highest_rank) = highest_rank {
-                    if highest_rank > self.restrictions.max_rank {
+                    if highest_rank > self.restrictions.max_rank + 1 {
                         return Err(RegistrationError::CurrentRankTooHigh {
                             rank: highest_rank,
                             expected: self.restrictions.max_rank,
