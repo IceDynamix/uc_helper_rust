@@ -143,21 +143,21 @@ async fn add_snapshot(ctx: &Context, msg: &Message, args: Args) -> CommandResult
                     .await?,
             ];
 
-            let typing = msg.channel_id.start_typing(&ctx.http)?;
-            let update_result = db.players.update_from_leaderboard();
-            typing.stop();
+            // let typing = msg.channel_id.start_typing(&ctx.http)?;
+            // let update_result = db.players.update_from_leaderboard();
+            // typing.stop();
 
-            if let Err(err) = update_result {
-                react_deny(&ctx, &msg).await;
-                msg.channel_id.say(&ctx.http, err).await?;
-                return Ok(());
-            }
+            // if let Err(err) = update_result {
+            //     react_deny(&ctx, &msg).await;
+            //     msg.channel_id.say(&ctx.http, err).await?;
+            //     return Ok(());
+            // }
 
-            replies.push(
-                msg.channel_id
-                    .say(&ctx.http, "Finished updating all players")
-                    .await?,
-            );
+            // replies.push(
+            //     msg.channel_id
+            //         .say(&ctx.http, "Finished updating all players")
+            //         .await?,
+            // );
 
             replies.push(
                 msg.channel_id
