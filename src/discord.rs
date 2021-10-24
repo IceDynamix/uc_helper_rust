@@ -73,7 +73,14 @@ struct Player;
 struct Global;
 
 #[group]
-#[commands(add_snapshot, create_check_in, export_check_in, resume_check_in)]
+#[commands(
+    add_snapshot,
+    create_check_in,
+    export_check_in,
+    resume_check_in,
+    register,
+    unregister
+)]
 #[only_in(guilds)]
 #[checks(bot_channel_check)]
 #[description("Tournament related commands")]
