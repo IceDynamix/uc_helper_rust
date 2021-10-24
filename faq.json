@@ -26,22 +26,22 @@
   },
   "bracket": {
     "title": "Bracket / Matchups",
-    "description": "You can find the brackets/match-ups [here](https://challonge.com/Underdogs_Charity). The bracket will stay empty until the check-in has concluded, a player list can be found [here](https://docs.google.com/spreadsheets/d/1IhTxdI2TxUnqRjbqyL1ZQgfaQgLm5HHv1XrGm2DHvNc/edit#gid=242123063) instead.",
+    "description": "You can find the brackets/match-ups [here](https://challonge.com/Underdogs_Cup_11). The bracket will stay empty until the check-in has concluded, a player list will be available later.",
     "category": "Tournament"
   },
   "rules": {
     "title": "Rules",
-    "description": "You can find the full list of rules [here](https://challonge.com/Underdogs_Charity).",
+    "description": "You can find the full list of rules [here](https://challonge.com/Underdogs_Cup_11).",
     "category": "Tournament"
   },
   "when": {
     "title": "Countdown",
-    "description": "You can find a countdown for the tournament [here](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1038350370).",
+    "description": "A countdown will be available at a later date",
     "category": "Tournament"
   },
   "countdown": {
     "title": "Countdown",
-    "description": "You can find a countdown for the tournament [here](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1038350370).",
+    "description": "A countdown will be available at a later date",
     "category": "Tournament"
   },
   "checkin": {
@@ -56,12 +56,12 @@
   },
   "match": {
     "title": "Match Procedure",
-    "description": "These are the basic steps to play a proper tournament match. You can find additional details regarding match procedure in the [bracket description](https://challonge.com/Underdogs_Charity).",
+    "description": "These are the basic steps to play a proper tournament match. You can find additional details regarding match procedure in the [bracket description](https://challonge.com/Underdogs_Cup_11).",
     "category": "Match Procedure",
     "fields": [
       {
         "name": "1. Know who your opponent is!",
-        "value": "Check the [bracket](https://challonge.com/Underdogs_Charity) for your match up. `.faq bracket` for more information."
+        "value": "Check the [bracket](https://challonge.com/Underdogs_Cup_11) for your match up. `.faq bracket` for more information."
       },
       {
         "name": "2. Find your opponent!",
@@ -102,7 +102,7 @@
   },
   "playerlist": {
     "title": "Player List",
-    "description": "[Spreadsheet](https://docs.google.com/spreadsheets/d/1vZkWTFlJBuXMQ9WsmMrGrosXX8JC6WikfJeweS7mZVY/edit#gid=1398529569)\n\nThe spreadsheet will add registered players hourly, but **will not update the stats regularly**. The next time all player stats will be updated is before/during check-in, for seeding purposes. If you'd like to force a refresh on your data, then run `.stats <username>` with your username in any bot-allowed channel."
+    "description": "Player list will be available at a later date"
   },
   "streamed": {
     "title": "Streamed match",
