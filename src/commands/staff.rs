@@ -46,6 +46,27 @@ async fn update_registered(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
+async fn set_active(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let db = crate::discord::get_database(&ctx).await;
+    match db.tournaments.set_active(args.current()) {
+        Ok(entry) => {
+            react_confirm(&ctx, &msg).await;
+            if entry.is_none() {
+                msg.channel_id
+                    .say(&ctx.http, "Set all tournaments to inactive")
+                    .await?;
+            }
+        }
+        Err(err) => {
+            tracing::warn!("{}", err);
+            msg.channel_id.say(&ctx.http, err).await?;
+        }
+    }
+
+    Ok(())
+}
+
+#[command]
 async fn staff_register(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let discord_account_to_link = match args.current() {
         Some(arg) => {

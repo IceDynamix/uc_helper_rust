@@ -54,7 +54,8 @@ struct Owner;
     staff_register,
     staff_unregister,
     staff_link,
-    staff_unlink
+    staff_unlink,
+    set_active
 )]
 #[checks(has_staff_role)]
 #[only_in(guilds)]
