@@ -103,7 +103,7 @@ async fn bot_channel_check(
     }
 
     let allowed_channels: Vec<u64> = vec![
-        822933641611968512, // register
+        901939376815218719, // register
         752703502173863966, // bot spam
         776806403884056616, // bot testing
     ];
